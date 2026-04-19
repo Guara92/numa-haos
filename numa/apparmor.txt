@@ -15,8 +15,7 @@ profile numa flags=(attach_disconnected,mediate_deleted) {
 
   # --- Container startup ---
   /init rix,
-  /bin/** rix,
-  /usr/bin/** rix,
+  /bin/sh rix,
 
   # --- Networking ---
   network inet  stream,
