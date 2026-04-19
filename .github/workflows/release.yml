@@ -6,6 +6,10 @@ on:
     types:
       - published
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build:
     name: Build & Push ${{ matrix.arch }}
