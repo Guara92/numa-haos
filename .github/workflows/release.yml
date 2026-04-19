@@ -45,6 +45,13 @@ jobs:
         id: version
         run: echo "version=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
 
+      - name: Lowercase repository owner
+        id: repo_owner
+        run: |
+          # Convert the repository owner string to lowercase
+          OWNER="${{ github.repository_owner }}"
+          echo "lowercase=${OWNER,,}" >> "$GITHUB_OUTPUT"
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v7
         with:
@@ -53,8 +60,8 @@ jobs:
           platforms: ${{ steps.platform.outputs.platform }}
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/numa-${{ matrix.arch }}:${{ steps.version.outputs.version }}
-            ghcr.io/${{ github.repository_owner }}/numa-${{ matrix.arch }}:latest
+            ghcr.io/${{ steps.repo_owner.outputs.lowercase }}/numa-${{ matrix.arch }}:${{ steps.version.outputs.version }}
+            ghcr.io/${{ steps.repo_owner.outputs.lowercase }}/numa-${{ matrix.arch }}:latest
           build-args: |
             BUILD_FROM=ghcr.io/hassio-addons/base:20.0.4
             BUILD_ARCH=${{ matrix.arch }}
