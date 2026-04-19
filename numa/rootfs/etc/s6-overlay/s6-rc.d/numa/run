@@ -1,0 +1,48 @@
+#!/usr/bin/with-contenv bashio
+# ==============================================================================
+# Home Assistant App: Numa
+# s6-overlay service run script
+# Starts the Numa DNS server with persistent config support.
+#
+# Numa CLI reference:
+#   numa [--config <path>]   — path to numa.toml (default: platform data dir)
+#   GET /health              — returns {"status":"ok",...} when up
+# ==============================================================================
+</thinking>
+
+declare numa_config
+declare log_level
+declare api_port
+declare dns_port
+
+# ------------------------------------------------------------------------------
+# Read add-on options
+# ------------------------------------------------------------------------------
+log_level=$(bashio::config 'log_level' 'info')
+bashio::log.level "${log_level}"
+
+bashio::log.info "Starting Numa..."
+
+# ------------------------------------------------------------------------------
+# Config file provisioning
+# ------------------------------------------------------------------------------
+numa_config="/config/numa.toml"
+
+if ! bashio::fs.file_exists "${numa_config}"; then
+    bashio::log.info "No numa.toml found at ${numa_config}, writing default config..."
+    cp /etc/numa/numa.toml.default "${numa_config}"
+    bashio::log.info "Default config written. Edit it at ${numa_config} and restart the add-on."
+fi
+
+bashio::log.info "Config : ${numa_config}"
+bashio::log.info "Binary : $(numa --version 2>&1 || true)"
+
+# ------------------------------------------------------------------------------
+# Launch Numa
+# numa accepts --config <path> to point at a custom numa.toml location.
+# All DNS/API/port settings come from the TOML file itself; we do not
+# patch them here — numa.toml is the single source of truth.
+# ------------------------------------------------------------------------------
+bashio::log.info "Launching Numa..."
+
+exec /usr/local/bin/numa --config "${numa_config}"

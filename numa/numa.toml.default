@@ -1,0 +1,40 @@
+# Numa default configuration for Home Assistant OS
+# This file is placed at /config/numa.toml inside the container.
+# Edit it via the Numa web UI editor or directly via the Supervisor file editor.
+# Restart the add-on after saving changes.
+
+[server]
+bind_addr = "0.0.0.0:53"
+api_port = 5380
+# api_bind_addr = "0.0.0.0"  # uncomment to expose dashboard on LAN without ingress
+# data_dir = "/data/numa"     # persistent data dir; mapped by the add-on automatically
+
+[upstream]
+mode = "forward"
+address = ["9.9.9.9", "149.112.112.112"]   # Quad9 – privacy-respecting public DNS
+# address = "https://dns.quad9.net/dns-query"  # DNS-over-HTTPS alternative
+# fallback = ["8.8.8.8", "1.1.1.1"]
+
+[blocking]
+enabled = false
+# refresh_hours = 24
+# lists = ["https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/hosts/pro.txt"]
+# allowlist = []
+
+[cache]
+max_entries = 100000
+min_ttl = 60
+max_ttl = 86400
+
+[proxy]
+enabled = false
+# port = 80
+# tls_port = 443
+# tld = "numa"
+
+# Example: add local DNS overrides
+# [[zones]]
+# domain = "homeassistant.local"
+# record_type = "A"
+# value = "192.168.1.10"
+# ttl = 60
