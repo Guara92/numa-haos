@@ -59,27 +59,10 @@ backend reads directly.
 | `trace` | Every internal function call |
 | `debug` | Detailed debug information |
 | `info` | Normal operational events *(default)* |
+| `notice` | Noteworthy events that are not warnings |
 | `warning` | Non-fatal anomalies |
 | `error` | Runtime errors only |
 | `fatal` | Unrecoverable failures only |
-
-### `dns_port`
-
-The UDP/TCP port Numa listens on for DNS queries.
-
-- **Default:** `53`
-- Only change this if port `53` is already in use on the host (e.g. by
-  `systemd-resolved`). If you do change it, update `bind_addr` in
-  `numa.toml` accordingly.
-
-### `api_port`
-
-The HTTP port for the Numa dashboard and REST API inside the container.
-
-- **Default:** `5380`
-- This port is proxied through Home Assistant Ingress. You do not normally
-  need to open it in your firewall.
-- If you change it here, also change `api_port` in `numa.toml` to match.
 
 ### `config_source`
 
@@ -100,13 +83,13 @@ All sections and keys are optional unless marked **required**.
 |---|---|---|---|
 | `bind_addr` | string | `"0.0.0.0:53"` | DNS listener `address:port` |
 | `api_port` | integer | `5380` | HTTP dashboard/API port |
-| `api_bind_addr` | string | `"127.0.0.1"` | **Must be `"0.0.0.0"`** for HA Ingress to reach the dashboard |
+| `api_bind_addr` | string | `"0.0.0.0"` | Required for HA Ingress to reach the dashboard |
 | `data_dir` | string | `/var/lib/numa` | TLS CA/cert storage; set to `"/data/numa"` in the add-on |
 | `filter_aaaa` | bool | `false` | Answer AAAA queries with NODATA on IPv4-only networks |
 
-> **`api_bind_addr = "0.0.0.0"` is required** in the Home Assistant add-on.
-> The default `"127.0.0.1"` restricts the dashboard to loopback only, which
-> prevents the HA Ingress proxy from reaching it.
+> The add-on default template sets `api_bind_addr = "0.0.0.0"` so the HA
+> Ingress proxy can reach the dashboard. Do not change this to `"127.0.0.1"` —
+> doing so will prevent the sidebar entry from opening.
 
 ### `[upstream]`
 

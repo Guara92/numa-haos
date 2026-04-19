@@ -36,14 +36,14 @@ jobs:
         id: platform
         run: |
           if [ "${{ matrix.arch }}" = "aarch64" ]; then
-            echo "platform=linux/arm64" >> $GITHUB_OUTPUT
+            echo "platform=linux/arm64" >> "$GITHUB_OUTPUT"
           elif [ "${{ matrix.arch }}" = "amd64" ]; then
-            echo "platform=linux/amd64" >> $GITHUB_OUTPUT
+            echo "platform=linux/amd64" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Get release version
         id: version
-        run: echo "version=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+        run: echo "version=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6

@@ -21,7 +21,7 @@ profile numa flags=(attach_disconnected,mediate_deleted) {
   network netlink raw,
 
   # --- Numa binary ---
-  /usr/local/bin/numa            mr,
+  /usr/local/bin/numa            mrix,
 
   # --- Configuration (addon_config mapping → /config inside container) ---
   /config/                       r,
@@ -43,6 +43,7 @@ profile numa flags=(attach_disconnected,mediate_deleted) {
   /var/run/s6/**                 rkix,
   /etc/s6-overlay/**             r,
   /usr/bin/bashio                rix,
+  /usr/bin/with-contenv          rix,
   /usr/lib/bashio/**             r,
 
   # --- System libraries and dynamic linker ---

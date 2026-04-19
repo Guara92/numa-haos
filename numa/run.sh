@@ -1,4 +1,5 @@
 #!/usr/bin/with-contenv bashio
+# shellcheck shell=bash
 # ==============================================================================
 # Home Assistant App: Numa
 # Legacy entrypoint — kept for reference.

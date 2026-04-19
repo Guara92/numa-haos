@@ -33,13 +33,9 @@ map:
     read_only: false
 options:
   log_level: info
-  dns_port: 53
-  api_port: 5380
   config_source: default
 schema:
   log_level: list(trace|debug|info|notice|warning|error|fatal)?
-  dns_port: int(1,65535)?
-  api_port: int(1,65535)?
   config_source: list(default|file)?
 backup_exclude:
   - data/
