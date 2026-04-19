@@ -40,7 +40,6 @@ updates:
     directory: /numa
     schedule:
       interval: monthly
-      day: 1
       time: "08:00"
       timezone: Europe/Rome
     labels:
