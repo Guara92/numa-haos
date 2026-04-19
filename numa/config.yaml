@@ -1,0 +1,41 @@
+---
+name: Numa
+version: "0.1.0"
+slug: numa
+description: Self-hosted DNS resolver with ad-blocking, local proxy, and dashboard
+url: https://github.com/Guara92/numa-haos
+image: ghcr.io/guara92/numa-{arch}
+ingress: true
+ingress_port: 5380
+panel_icon: mdi:dns
+panel_title: Numa
+startup: services
+boot: auto
+init: false
+homeassistant: "2023.1.0"
+arch:
+  - aarch64
+  - amd64
+host_network: true
+watchdog: http://[HOST]:[PORT:5380]/health
+ports:
+  53/udp: 53
+  53/tcp: 53
+  5380/tcp: null
+ports_description:
+  53/udp: DNS server (UDP)
+  53/tcp: DNS server (TCP)
+  5380/tcp: Numa dashboard (not required when using Ingress)
+map:
+  - type: addon_config
+    read_only: false
+  - type: data
+    read_only: false
+options:
+  log_level: info
+  config_source: default
+schema:
+  log_level: list(trace|debug|info|notice|warning|error|fatal)?
+  config_source: list(default|file)?
+backup_exclude:
+  - data/

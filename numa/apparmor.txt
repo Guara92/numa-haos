@@ -1,0 +1,86 @@
+#include <tunables/global>
+
+profile numa flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+
+  # Capabilities required by Numa
+  # NET_BIND_SERVICE: bind to privileged ports (DNS :53, DoT :853)
+  # KILL: send signals to child processes (graceful reload/restart)
+  # SYS_RESOURCE: manage resource limits
+  capability net_bind_service,
+  capability kill,
+  capability sys_resource,
+  capability dac_override,
+  capability dac_read_search,
+
+  # --- Networking ---
+  network inet  stream,
+  network inet  dgram,
+  network inet6 stream,
+  network inet6 dgram,
+  network netlink raw,
+
+  # --- Numa binary ---
+  /usr/local/bin/numa            mrix,
+
+  # --- Configuration (addon_config mapping → /config inside container) ---
+  /config/                       r,
+  /config/numa.toml              rw,
+
+  # --- Persistent data volume (/data inside container) ---
+  # Stores TLS CA material, self-signed certs, internal state
+  /data/                         r,
+  /data/numa/                    rw,
+  /data/numa/**                  rw,
+
+  # --- Bundled default config (read-only, embedded in image) ---
+  /etc/numa/                     r,
+  /etc/numa/**                   r,
+
+  # --- s6-overlay & bashio runtime paths ---
+  /run/s6/**                     rkix,
+  /run/s6-rc/**                  rkix,
+  /var/run/s6/**                 rkix,
+  /etc/s6-overlay/**             r,
+  /usr/bin/bashio                rix,
+  /usr/bin/with-contenv          rix,
+  /usr/lib/bashio/**             r,
+
+  # --- System libraries and dynamic linker ---
+  /lib/**                        mr,
+  /lib64/**                      mr,
+  /usr/lib/**                    mr,
+  /usr/local/lib/**              mr,
+
+  # --- /proc access needed by Tokio async runtime ---
+  @{PROC}/                       r,
+  @{PROC}/@{pid}/                r,
+  @{PROC}/@{pid}/fd/             r,
+  @{PROC}/@{pid}/maps            r,
+  @{PROC}/@{pid}/status          r,
+  @{PROC}/@{pid}/task/           r,
+  @{PROC}/sys/kernel/hostname    r,
+  @{PROC}/sys/net/core/somaxconn r,
+
+  # --- DNS resolver bootstrap (upstream DoH/DoT TLS handshake) ---
+  /etc/resolv.conf               r,
+  /etc/hosts                     r,
+  /etc/ssl/certs/**              r,
+  /etc/ca-certificates/**        r,
+  /usr/share/ca-certificates/**  r,
+
+  # --- Timezone data (timestamps in query log) ---
+  /usr/share/zoneinfo/**         r,
+  /etc/localtime                 r,
+
+  # --- Temporary files (tarball extraction during image build is done
+  #     at build time; runtime tmp is used by rcgen for cert generation) ---
+  /tmp/                          r,
+  /tmp/**                        rw,
+
+  # --- Deny everything else ---
+  deny /proc/sysrq-trigger       w,
+  deny /proc/sys/fs/binfmt_misc  w,
+  deny @{PROC}/sys/kernel/sysrq  w,
+  deny /sys/firmware/**          rw,
+}

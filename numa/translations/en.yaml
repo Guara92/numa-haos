@@ -1,0 +1,22 @@
+---
+configuration:
+  log_level:
+    name: Log level
+    description: >-
+      The log level controls the verbosity of the app. Possible values are
+      trace, debug, info, warning, error, and fatal.
+  dns_port:
+    name: DNS port
+    description: >-
+      The port Numa will listen on for DNS queries. Default is 53.
+  api_port:
+    name: Dashboard port
+    description: >-
+      The port Numa will use for its internal dashboard and API.
+      Default is 5380. This is also the port used for Ingress.
+  config_source:
+    name: Configuration source
+    description: >-
+      Choose how Numa is configured. Use "default" to generate a sample
+      numa.toml on first boot, or "file" to manage the file yourself
+      in the addon_config mapped directory.

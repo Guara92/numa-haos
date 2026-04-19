@@ -1,0 +1,41 @@
+# Byte-compiled / optimized / dependency files
+__pycache__/
+*.py[cod]
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Docker
+*.log
+
+# Local test artifacts
+*.tar.gz
+*.zip
+
+# Secrets / env overrides
+.env
+.env.local
+secrets.yaml
+
+# Home Assistant local testing artifacts
+config/
+homeassistant/

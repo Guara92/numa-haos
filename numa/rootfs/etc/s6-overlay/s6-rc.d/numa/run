@@ -1,0 +1,74 @@
+#!/usr/bin/with-contenv bashio
+# ==============================================================================
+# Home Assistant App: Numa
+# s6-overlay service run script
+# Starts the Numa DNS server with persistent config support.
+#
+# Numa CLI reference (confirmed from src/main.rs v0.13.1):
+#   numa [config-path]   — config path is a POSITIONAL argument, not a flag.
+#                          Defaults to numa.toml in the current directory.
+#   GET /health          — returns {"status":"ok",...} when up (src/health.rs)
+#
+# Log level is controlled via the RUST_LOG environment variable (env_logger).
+# ==============================================================================
+
+declare numa_config
+declare log_level
+declare rust_log_level
+declare config_source
+
+# ------------------------------------------------------------------------------
+# Read add-on options
+# ------------------------------------------------------------------------------
+log_level=$(bashio::config 'log_level' 'info')
+bashio::log.level "${log_level}"
+
+# Map the HA log level to a valid env_logger / RUST_LOG level.
+# HA schema allows: trace | debug | info | notice | warning | error | fatal
+# env_logger accepts: trace | debug | info | warn | error  (no notice/warning/fatal)
+case "${log_level}" in
+  notice)  rust_log_level="info"  ;;
+  warning) rust_log_level="warn"  ;;
+  fatal)   rust_log_level="error" ;;
+  *)       rust_log_level="${log_level}" ;;
+esac
+export RUST_LOG="${rust_log_level}"
+
+bashio::log.info "Starting Numa..."
+
+# ------------------------------------------------------------------------------
+# Config file provisioning
+# ------------------------------------------------------------------------------
+numa_config="/config/numa.toml"
+config_source=$(bashio::config 'config_source' 'default')
+
+if [ "${config_source}" = "file" ]; then
+    # Strict mode: the user is responsible for providing the config file.
+    if ! bashio::fs.file_exists "${numa_config}"; then
+        bashio::log.fatal "config_source is set to 'file' but ${numa_config} does not exist."
+        bashio::log.fatal "Create the file or change config_source to 'default' to auto-generate it."
+        exit 1
+    fi
+    bashio::log.info "config_source=file: using existing ${numa_config}"
+else
+    # Default mode: copy the bundled template on first boot.
+    if ! bashio::fs.file_exists "${numa_config}"; then
+        bashio::log.info "No numa.toml found at ${numa_config}, writing default config..."
+        cp /etc/numa/numa.toml.default "${numa_config}"
+        bashio::log.info "Default config written. Edit ${numa_config} and restart the add-on to customise."
+    fi
+fi
+
+bashio::log.info "Config : ${numa_config}"
+bashio::log.info "Binary : $(numa version 2>&1 || true)"
+
+# ------------------------------------------------------------------------------
+# Launch Numa
+#
+# The config path is passed as a positional argument — NOT as --config.
+# All DNS/API/port settings come from the TOML file itself; we do not
+# patch them here: numa.toml is the single source of truth.
+# ------------------------------------------------------------------------------
+bashio::log.info "Launching Numa..."
+
+exec /usr/local/bin/numa "${numa_config}"

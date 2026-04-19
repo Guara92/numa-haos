@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#1e3a5f"/>
+      <stop offset="100%" stop-color="#0d1f33"/>
+    </radialGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4fa3e0"/>
+      <stop offset="100%" stop-color="#2176ae"/>
+    </linearGradient>
+    <linearGradient id="pulse1" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#4fa3e0" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#4fa3e0" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#4fa3e0" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="62" fill="url(#bg)"/>
+  <circle cx="64" cy="64" r="62" fill="none" stroke="#2176ae" stroke-width="1.5" opacity="0.6"/>
+
+  <!-- Outer signal arc — top -->
+  <path d="M 26 64 A 38 38 0 0 1 102 64"
+        fill="none" stroke="url(#accent)" stroke-width="2.5"
+        stroke-linecap="round" opacity="0.35"/>
+
+  <!-- Middle signal arc — top -->
+  <path d="M 35 64 A 29 29 0 0 1 93 64"
+        fill="none" stroke="url(#accent)" stroke-width="2.5"
+        stroke-linecap="round" opacity="0.55"/>
+
+  <!-- Inner signal arc — top -->
+  <path d="M 44 64 A 20 20 0 0 1 84 64"
+        fill="none" stroke="url(#accent)" stroke-width="2.5"
+        stroke-linecap="round" opacity="0.8"/>
+
+  <!-- Outer signal arc — bottom -->
+  <path d="M 26 64 A 38 38 0 0 0 102 64"
+        fill="none" stroke="url(#accent)" stroke-width="2.5"
+        stroke-linecap="round" opacity="0.35"/>
+
+  <!-- Middle signal arc — bottom -->
+  <path d="M 35 64 A 29 29 0 0 0 93 64"
+        fill="none" stroke="url(#accent)" stroke-width="2.5"
+        stroke-linecap="round" opacity="0.55"/>
+
+  <!-- Inner signal arc — bottom -->
+  <path d="M 44 64 A 20 20 0 0 0 84 64"
+        fill="none" stroke="url(#accent)" stroke-width="2.5"
+        stroke-linecap="round" opacity="0.8"/>
+
+  <!-- N letterform -->
+  <g filter="url(#glow)">
+    <path d="M 42 40 L 42 88 L 50 88 L 50 56 L 78 88 L 86 88 L 86 40 L 78 40 L 78 72 L 50 40 Z"
+          fill="url(#accent)"/>
+  </g>
+
+  <!-- Centre dot (DNS node) -->
+  <circle cx="64" cy="64" r="4" fill="#4fa3e0" filter="url(#glow)" opacity="0.9"/>
+</svg>

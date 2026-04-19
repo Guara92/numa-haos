@@ -1,0 +1,84 @@
+---
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint-yaml:
+    name: Lint YAML
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+
+      - name: Run yamllint
+        uses: frenck/action-yamllint@v1
+
+  lint-markdown:
+    name: Lint Markdown
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+
+      - name: Run markdownlint
+        uses: articulate/actions-markdownlint@v1
+        with:
+          config: .markdownlint.json
+
+  lint-dockerfile:
+    name: Lint Dockerfile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+
+      - name: Run hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: numa/Dockerfile
+
+  build:
+    name: Build ${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    needs:
+      - lint-yaml
+      - lint-markdown
+      - lint-dockerfile
+    strategy:
+      matrix:
+        arch:
+          - aarch64
+          - amd64
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: numa
+          file: numa/Dockerfile
+          push: false
+          platforms: ${{ matrix.arch == 'aarch64' && 'linux/arm64' || 'linux/amd64' }}
+          build-args: |
+            BUILD_FROM=ghcr.io/hassio-addons/base:20.0.4
+            BUILD_ARCH=${{ matrix.arch }}
+            BUILD_VERSION=dev
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            BUILD_REF=${{ github.sha }}
+            BUILD_REPOSITORY=${{ github.repository }}
+            BUILD_NAME=Numa
+            BUILD_DESCRIPTION=Self-hosted DNS resolver and local network proxy
