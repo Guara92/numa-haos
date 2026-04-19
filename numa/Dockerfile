@@ -53,6 +53,8 @@ RUN \
 # Copy root filesystem (s6 service definitions, default config, etc.)
 COPY rootfs /
 
+RUN chmod a+x /etc/s6-overlay/s6-rc.d/numa/run
+
 # Health check — GET /health is a documented endpoint (src/health.rs + src/api.rs).
 # Response shape: {"status":"ok","version":"...","uptime_secs":N,...}
 # The check is intentionally lightweight: it only queries the loopback address.
