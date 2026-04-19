@@ -35,7 +35,7 @@ Numa directly from the Home Assistant Supervisor, with:
    **Repositories**.
 3. Add the following repository URL:
 
-   ```
+   ```text
    https://github.com/Guara92/numa-haos
    ```
 

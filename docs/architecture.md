@@ -18,13 +18,13 @@ numa-haos/
 │   └── networking.md            # DNS / networking reference
 └── numa/
     ├── config.yaml              # Supervisor app manifest
-    ├── build.yaml               # Multi-arch base image mapping
     ├── Dockerfile               # Container image definition
     ├── run.sh                   # App entrypoint (s6 / bashio)
     ├── numa.toml.default        # Default config written on first boot
     ├── README.md                # App-level README (shown in HA UI)
     ├── DOCS.md                  # Full app documentation
     ├── CHANGELOG.md             # Release history
+    ├── apparmor.txt             # Custom AppArmor profile
     ├── icon.png                 # App icon (shown in HA App Store)
     ├── logo.png                 # App logo (shown on app page)
     ├── translations/
@@ -43,7 +43,7 @@ The first version uses a **single-process layout**: the container starts Numa
 directly via `run.sh`, which is invoked by the Home Assistant Supervisor through
 the s6-overlay init system bundled in the base image.
 
-```
+```text
 ┌─────────────────────────────────────────────────┐
 │  Home Assistant Supervisor                       │
 │                                                  │
@@ -80,7 +80,7 @@ the s6-overlay init system bundled in the base image.
 
 ## Configuration model
 
-```
+```text
 ┌──────────────────────────────────────────┐
 │  Home Assistant App Options (config.yaml) │
 │  (log_level, dns_port, api_port, ...)     │
@@ -92,7 +92,7 @@ the s6-overlay init system bundled in the base image.
 │  (full Numa configuration, TOML format)   │
 │  Persisted via addon_config mapping       │
 └──────────────────┬───────────────────────┘
-                   │ --config flag
+                   │ positional argument
                    ▼
              /usr/local/bin/numa
 ```
@@ -119,7 +119,7 @@ Home Assistant Ingress proxies HTTP traffic from the sidebar panel to the
 app container on `ingress_port` (default `5380`). The Supervisor injects an
 `X-Ingress-Path` header so the app knows the base path prefix.
 
-```
+```text
 Browser
   │
   │  https://<ha-host>/api/hassio_ingress/<token>/
@@ -144,16 +144,12 @@ binary to download for each target architecture:
 
 | `BUILD_ARCH` | Docker platform | Numa binary suffix |
 |---|---|---|
-| `aarch64` | `linux/arm64` | `arm64` |
-| `amd64` | `linux/amd64` | `amd64` |
+| `aarch64` | `linux/arm64` | `aarch64` |
+| `amd64` | `linux/amd64` | `x86_64` |
 
 CI builds are triggered on every push and pull request. Release builds
 publish multi-arch images to the GitHub Container Registry (GHCR) under
 `ghcr.io/guara92/numa-<arch>:<version>`.
-
-The `build.yaml` file maps each architecture to the same hassio-addons base
-image. This can be extended later to use architecture-specific base images if
-needed.
 
 ---
 
@@ -170,7 +166,7 @@ This service will:
 
 The runtime model will evolve to a **two-process layout** supervised by s6:
 
-```
+```text
 s6-overlay
   ├── numa         (DNS service)
   └── editor       (tiny HTTP helper, e.g. a small Go or Python service)

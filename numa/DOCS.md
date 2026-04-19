@@ -269,7 +269,7 @@ required for the Ingress proxy to reach the dashboard.
 
 Home Assistant monitors the add-on via the Numa health endpoint:
 
-```
+```text
 GET http://<host>:5380/health
 ```
 
@@ -290,8 +290,8 @@ needs:
 - Network access for upstream DNS queries and TLS connections
 - No access to the HA config directory, host devices, or kernel interfaces
 
-The resulting security score is **6/6** (base 5 + 2 Ingress − 1 host network
-+ 1 custom AppArmor).
+The resulting security score is **6/6**
+(base 5 + 2 Ingress − 1 host network + 1 custom AppArmor).
 
 ---
 

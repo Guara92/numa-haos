@@ -34,7 +34,7 @@ via native Ingress.
    Or manually add the following URL in
    _Settings → Add-ons → Add-on Store → (three dots) → Repositories_:
 
-   ```
+   ```text
    https://github.com/Guara92/numa-haos
    ```
 
@@ -97,7 +97,7 @@ SOFTWARE.
 [docs]: https://github.com/Guara92/numa-haos/blob/main/numa/DOCS.md
 [issue]: https://github.com/Guara92/numa-haos/issues
 [license-shield]: https://img.shields.io/github/license/Guara92/numa-haos.svg
-[maintenance-shield]: https://img.shields.io/maintenance/yes/2024.svg
+
 [numa]: https://github.com/razvandimescu/numa
 [project-stage-shield]: https://img.shields.io/badge/project%20stage-experimental-yellow.svg
 [releases-shield]: https://img.shields.io/github/release/Guara92/numa-haos.svg
