@@ -1,40 +1,90 @@
 # Numa default configuration for Home Assistant OS
-# This file is placed at /config/numa.toml inside the container.
-# Edit it via the Numa web UI editor or directly via the Supervisor file editor.
+# -------------------------------------------------------
+# This file is copied to /config/numa.toml on first boot.
+# Edit /config/numa.toml to customise your setup.
 # Restart the add-on after saving changes.
+#
+# Full reference: https://github.com/razvandimescu/numa
+# -------------------------------------------------------
 
 [server]
-bind_addr = "0.0.0.0:53"
-api_port = 5380
-# api_bind_addr = "0.0.0.0"  # uncomment to expose dashboard on LAN without ingress
-# data_dir = "/data/numa"     # persistent data dir; mapped by the add-on automatically
+bind_addr    = "0.0.0.0:53"
+api_port     = 5380
+# IMPORTANT: api_bind_addr must be "0.0.0.0" so the Home Assistant
+# Ingress proxy can reach the dashboard from outside the loopback.
+api_bind_addr = "0.0.0.0"
+# data_dir stores TLS CA material and internal state.
+# /data is the add-on's persistent data volume (always mapped rw).
+data_dir     = "/data/numa"
+# filter_aaaa = false  # set true on IPv4-only networks
 
 [upstream]
-mode = "forward"
-address = ["9.9.9.9", "149.112.112.112"]   # Quad9 – privacy-respecting public DNS
-# address = "https://dns.quad9.net/dns-query"  # DNS-over-HTTPS alternative
+mode    = "forward"
+address = ["9.9.9.9", "149.112.112.112"]   # Quad9 — privacy-respecting public DNS
+# DNS-over-HTTPS alternative:
+# address = "https://dns.quad9.net/dns-query"
+# DNS-over-TLS alternative:
+# address = "tls://9.9.9.9#dns.quad9.net"
 # fallback = ["8.8.8.8", "1.1.1.1"]
+# timeout_ms = 3000
+# hedge_ms   = 10
+
+# Per-suffix conditional forwarding (split-horizon DNS).
+# Uncomment and repeat the block for each internal domain.
+# [[forwarding]]
+# suffix   = "home.arpa"
+# upstream = "192.168.1.1"
 
 [blocking]
 enabled = false
 # refresh_hours = 24
-# lists = ["https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/hosts/pro.txt"]
-# allowlist = []
+# lists = [
+#   "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/hosts/pro.txt"
+# ]
+# allowlist = ["ads.example.com"]
 
 [cache]
 max_entries = 100000
-min_ttl = 60
-max_ttl = 86400
+min_ttl     = 60
+max_ttl     = 86400
+# Pre-warm these domains at startup:
+# warm = ["home-assistant.io", "github.com"]
 
 [proxy]
-enabled = false
-# port = 80
+enabled  = false
+# port     = 80
 # tls_port = 443
-# tld = "numa"
+# tld      = "numa"
+# bind_addr = "0.0.0.0"   # expose proxy on LAN
 
-# Example: add local DNS overrides
+# Register a local service accessible at <name>.numa
+# [[services]]
+# name        = "homeassistant"
+# target_port = 8123
+
+# Static DNS overrides — add as many blocks as needed.
 # [[zones]]
-# domain = "homeassistant.local"
+# domain      = "homeassistant.local"
 # record_type = "A"
-# value = "192.168.1.10"
-# ttl = 60
+# value       = "192.168.1.10"
+# ttl         = 60
+
+# DNS-over-TLS listener (RFC 7858).
+# Numa generates a self-signed CA automatically; install /ca.pem on clients.
+[dot]
+enabled  = false
+# port     = 853
+# bind_addr = "0.0.0.0"
+# cert_path = "/data/numa/server.pem"   # omit to use auto-generated self-signed cert
+# key_path  = "/data/numa/server.key"
+
+# DNSSEC chain-of-trust validation (requires mode = "recursive" in [upstream]).
+[dnssec]
+enabled = false
+# strict = false   # true = return SERVFAIL for bogus signatures
+
+# LAN mDNS peer discovery (_numa._tcp.local).
+[lan]
+enabled = false
+# broadcast_interval_secs = 30
+# peer_timeout_secs       = 90
