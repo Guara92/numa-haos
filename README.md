@@ -65,7 +65,7 @@ Contributions are welcome. Please open an issue or pull request on GitHub.
 
 ## License
 
-MIT License — Copyright (c) 2024 Guara92
+MIT License — Copyright (c) 2026 Guara92
 
 See [LICENSE](LICENSE) for the full text.
 

@@ -1,0 +1,50 @@
+---
+# Dependabot keeps GitHub Actions versions and the HA base image up to date.
+#
+# What is tracked automatically:
+#   - github-actions: all uses: owner/action@vN in ci.yml and release.yml
+#   - docker: FROM line in numa/Dockerfile (ghcr.io/hassio-addons/base)
+#
+# What is NOT tracked (manual):
+#   - NUMA_VERSION ARG in numa/Dockerfile — Dependabot only tracks FROM
+#     directives, not arbitrary ARG values. To bump the upstream Numa binary,
+#     update ARG NUMA_VERSION in numa/Dockerfile by hand and cut a new release.
+
+version: 2
+
+updates:
+  # ── GitHub Actions ──────────────────────────────────────────────────────────
+  # Covers .github/workflows/ci.yml and .github/workflows/release.yml
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Europe/Rome
+    labels:
+      - dependencies
+    commit-message:
+      prefix: "ci"
+      include: scope
+    # Avoid noisy individual bumps when several actions update the same week.
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  # ── Docker base image ────────────────────────────────────────────────────────
+  # Tracks ghcr.io/hassio-addons/base in numa/Dockerfile.
+  # Monthly cadence — the HA base image follows HA releases (~monthly).
+  - package-ecosystem: docker
+    directory: /numa
+    schedule:
+      interval: monthly
+      day: 1
+      time: "08:00"
+      timezone: Europe/Rome
+    labels:
+      - dependencies
+    commit-message:
+      prefix: "docker"
+      include: scope

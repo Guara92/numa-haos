@@ -308,7 +308,7 @@ Releases and changelogs are maintained on the [GitHub Releases page][releases].
 
 ## License
 
-MIT License — Copyright (c) 2024 Guara92
+MIT License — Copyright (c) 2026 Guara92
 
 [badge-repo]: https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg
 [issue]: https://github.com/Guara92/numa-haos/issues
