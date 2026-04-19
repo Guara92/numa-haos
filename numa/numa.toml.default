@@ -36,7 +36,7 @@ address = ["9.9.9.9", "149.112.112.112"]   # Quad9 — privacy-respecting public
 # upstream = "192.168.1.1"
 
 [blocking]
-enabled = false
+enabled = true
 # refresh_hours = 24
 # lists = [
 #   "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/hosts/pro.txt"
