@@ -41,16 +41,22 @@ profile numa flags=(attach_disconnected,mediate_deleted) {
   /etc/numa/                     r,
   /etc/numa/**                   r,
 
-  # --- s6-overlay & bashio runtime paths ---
-  /run/s6/**                     rkix,
-  /run/s6-rc/**                  rkix,
-  /var/run/s6/**                 rkix,
-  /etc/s6-overlay/**             rix,
-  /command/**                    rix,
-  /package/**                    rix,
-  /usr/bin/bashio                rix,
-  /usr/bin/with-contenv          rix,
-  /usr/lib/bashio/**             r,
+  # S6-Overlay
+  /init ix,
+  /bin/** ix,
+  /usr/bin/** ix,
+  /run/{s6,s6-rc*,service}/** ix,
+  /package/** ix,
+  /command/** ix,
+  /etc/services.d/** rwix,
+  /etc/cont-init.d/** rwix,
+  /etc/cont-finish.d/** rwix,
+  /run/{,**} rwk,
+  /dev/tty rw,
+
+  # Bashio
+  /usr/lib/bashio/** ix,
+  /tmp/** rwk,
 
   # --- System libraries and dynamic linker ---
   /lib/**                        mr,
