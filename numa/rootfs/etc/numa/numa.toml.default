@@ -73,7 +73,11 @@ hedge_ms    = 10
 # Set enabled = false to turn off blocking without removing the list.
 [blocking]
 enabled       = true
-refresh_hours = 24
+# Reduced from 24 h: if the startup download fails (e.g. network not ready
+# when the add-on first boots), the list is retried after 6 h instead of a
+# full day. The s6 run script also waits for outbound connectivity before
+# launching Numa, which prevents most startup failures in practice.
+refresh_hours = 6
 lists = [
   "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/hosts/pro.txt",
 ]
