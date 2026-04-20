@@ -86,5 +86,5 @@ See [LICENSE](LICENSE) for the full text.
 [license-shield]: https://img.shields.io/github/license/Guara92/numa-haos.svg
 [hagezi]: https://github.com/hagezi/dns-blocklists
 [numa]: https://github.com/razvandimescu/numa
-[numa-version-shield]: https://img.shields.io/badge/version-0.2.1-blue.svg
+[numa-version-shield]: https://img.shields.io/badge/version-0.3.0-blue.svg
 [project-stage-shield]: https://img.shields.io/badge/project%20stage-experimental-yellow.svg
