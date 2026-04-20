@@ -17,7 +17,8 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # hadolint ignore=DL3018
 RUN apk add --no-cache \
         curl \
-        ca-certificates
+        ca-certificates \
+        nginx
 
 # Download and install the Numa binary for the target architecture.
 #
@@ -53,7 +54,11 @@ RUN \
 # Copy root filesystem (s6 service definitions, default config, etc.)
 COPY rootfs /
 
-RUN chmod a+x /etc/s6-overlay/s6-rc.d/numa/run
+RUN chmod a+x \
+    /etc/s6-overlay/s6-rc.d/numa/run \
+    /etc/s6-overlay/s6-rc.d/init-nginx/run \
+    /etc/s6-overlay/s6-rc.d/nginx/run \
+    /etc/s6-overlay/s6-rc.d/nginx/finish
 
 # Health check — GET /health is a documented endpoint (src/health.rs + src/api.rs).
 # Response shape: {"status":"ok","version":"...","uptime_secs":N,...}
@@ -62,7 +67,7 @@ HEALTHCHECK \
     --interval=30s \
     --timeout=10s \
     --start-period=20s \
-    CMD curl --fail http://127.0.0.1:5380/health || exit 1
+    CMD curl --fail http://127.0.0.1:5381/health || exit 1
 
 # Build arguments (injected by the HA build system / CI)
 ARG BUILD_DATE

@@ -1,0 +1,29 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+# ==============================================================================
+# Numa add-on: init-nginx
+# Generates nginx configuration from templates before nginx starts.
+# ==============================================================================
+set -euo pipefail
+
+# Numa API listens on loopback port 5381.
+declare -r NUMA_API_PORT=5381
+
+# Generate upstream.conf pointing to Numa's API port.
+bashio::var.json \
+    port "^${NUMA_API_PORT}" \
+    | tempio \
+        -template /etc/nginx/templates/upstream.gtpl \
+        -out /etc/nginx/includes/upstream.conf
+
+# Generate the HA Ingress server block.
+# bashio::addon.ingress_port returns the port HA assigned for ingress.
+# bashio::addon.ip_address returns the container's IP that HA connects to.
+bashio::var.json \
+    interface "$(bashio::addon.ip_address)" \
+    port "^$(bashio::addon.ingress_port)" \
+    | tempio \
+        -template /etc/nginx/templates/ingress.gtpl \
+        -out /etc/nginx/servers/ingress.conf
+
+bashio::log.info "nginx configuration generated."

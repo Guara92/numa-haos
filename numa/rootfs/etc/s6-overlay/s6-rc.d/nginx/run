@@ -1,0 +1,17 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+# ==============================================================================
+# Numa add-on: nginx
+# Runs nginx — waits for Numa's API to be ready first.
+# ==============================================================================
+
+# Wait for Numa's API to be available before starting nginx.
+if ! bashio::net.wait_for 5381 localhost 900; then
+    bashio::log.fatal \
+        "Numa API on port 5381 did not become available within 900 seconds." \
+        "Check the numa service logs for startup errors."
+    exit 1
+fi
+
+bashio::log.info "Starting nginx..."
+exec nginx
