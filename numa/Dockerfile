@@ -28,7 +28,7 @@ RUN apk add --no-cache \
 #
 # Each archive is a flat tarball containing a single "numa" binary.
 # hadolint ignore=DL3003,SC2155
-ARG NUMA_VERSION="v0.13.1"
+ARG NUMA_VERSION="v0.14.0"
 RUN \
     if [[ "${BUILD_ARCH}" = "aarch64" ]]; then ARCH="aarch64"; \
     elif [[ "${BUILD_ARCH}" = "amd64" ]]; then ARCH="x86_64"; \

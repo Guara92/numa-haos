@@ -16,9 +16,12 @@ api_bind_addr = "127.0.0.1"
 # /data is the add-on's persistent data volume (always mapped rw).
 # Numa stores its TLS CA, generated certs, and internal state here.
 data_dir      = "/data/numa"
-# Uncomment on pure IPv4 networks — answers AAAA queries with NODATA so
-# Happy Eyeballs clients don't stall waiting for a v6 attempt.
-# Also strips ipv6hint from HTTPS/SVCB records (RFC 9460).
+# Uncomment on pure IPv4-only networks — answers AAAA queries with NODATA
+# (NOERROR + empty answer) so Happy Eyeballs clients don't stall waiting for
+# a v6 attempt that can never succeed. Also strips `ipv6hint` from HTTPS/SVCB
+# records (RFC 9460) so Chrome ≥103, Firefox and Safari don't bypass the
+# filter via SVCB hints. Local zones, overrides and the .numa proxy are not
+# affected — you can still configure v6 records for local services.
 # filter_aaaa = true
 
 # ---------------------------------------------------------------------------
@@ -34,30 +37,76 @@ data_dir      = "/data/numa"
 # DNS-over-HTTPS (https://) or DNS-over-TLS (tls://) encrypt the traffic
 # between Numa and the upstream so your ISP cannot observe your queries.
 #
-# Quad9 secured endpoint (dns.quad9.net / 9.9.9.9):
+# Primary: Quad9 secured endpoint (dns.quad9.net):
 #   - Blocks malware / phishing domains at the resolver level
 #   - Performs DNSSEC chain-of-trust validation on every response
 #   - No logging, GDPR-compliant (https://www.quad9.net/privacy/)
-# We use DoH as primary and DoT (two anycast IPs) as secondaries — all hit
-# the same secured endpoint. Numa's request hedging picks whichever answers
-# first. DoT format requires tls://IP#hostname (the hostname is the TLS SNI).
+# Secondary: Cloudflare 1.1.1.1 DoH — used as a second opinion when Quad9
+#   is slow or unreachable. Cloudflare also offers DNSSEC validation.
+#
+# Why DoH only (no DoT / tls://):
+#   DoH runs on port 443 alongside normal HTTPS traffic and is virtually
+#   never blocked. DoT uses port 853 which many home routers and ISPs silently
+#   drop — causing every query to stall for the full timeout_ms before Numa's
+#   SRTT learner routes around it, producing ~3 s latency spikes.
+#
 # NOTE: dns11.quad9.net is Quad9's ECS variant (sends a partial client IP
 # to upstreams for geo-optimisation) — we intentionally avoid it.
 [upstream]
 mode    = "forward"
-address = ["https://dns.quad9.net/dns-query", "tls://9.9.9.9#dns.quad9.net", "tls://149.112.112.112#dns.quad9.net"]
+address = [
+  "https://dns.quad9.net/dns-query",       # Quad9 secured, DNSSEC, no-log
+  "https://cloudflare-dns.com/dns-query",  # Cloudflare fallback
+]
 # Plain UDP fallback — used only when all encrypted upstreams fail (e.g. no
-# internet yet during boot). Same secured Quad9 anycast IPs.
+# internet yet during boot). Quad9 anycast IPs.
 fallback    = ["9.9.9.9", "149.112.112.112"]
-# How long to wait for a response before trying the next upstream (ms).
-timeout_ms  = 3000
+# How long to wait for a response before marking an upstream as slow (ms).
+# 5000 ms is the built-in default. 800 ms is aggressive but safe for healthy
+# DoH servers (typically <100 ms). Keeping this low ensures a stalled upstream
+# is bypassed quickly by the SRTT selector.
+timeout_ms  = 800
 # Request hedging: after this delay without a response Numa fires a parallel
-# request to the same upstream. Rescues UDP packet loss and DoH/DoT stalls.
+# request to the same upstream. Rescues UDP packet loss and transient stalls.
 # Set to 0 to disable. Default: 10
 hedge_ms    = 10
 
+# ---------------------------------------------------------------------------
+# Oblivious DNS over HTTPS — ODoH (RFC 9230)
+# ---------------------------------------------------------------------------
+# ODoH splits DNS privacy across two independent parties:
+#   relay  — sees your IP but not the query (just an encrypted blob)
+#   target — sees the query but not your IP (only the relay's IP)
+# Neither party alone can correlate who asked what.
+#
+# To enable ODoH, replace the [upstream] block above with the one below.
+# The relay is operated by the Numa project; the target is Cloudflare's
+# ODoH resolver. You can substitute any RFC 9230-compliant relay/target pair.
+#
+# IMPORTANT — relay_ip / target_ip (bootstrap IPs):
+#   When this add-on is the DNS server for the LAN (i.e. your router's DHCP
+#   hands out Home Assistant's IP as DNS), Numa's own outgoing HTTPS
+#   connections would need to resolve the relay/target hostnames through
+#   itself — a circular dependency. relay_ip and target_ip break this by
+#   providing a hardcoded IP so the TLS connection is established by IP while
+#   the cert is still validated against the correct hostname (SNI).
+#   Values below are the current IPs for odoh-relay.numa.rs and
+#   odoh.cloudflare-dns.com — update them if the relay moves.
+#
+# [upstream]
+# mode       = "odoh"
+# relay      = "https://odoh-relay.numa.rs/relay"
+# target     = "https://odoh.cloudflare-dns.com/dns-query"
+# relay_ip   = "178.104.229.30"   # odoh-relay.numa.rs  — bypass circular DNS
+# target_ip  = "104.16.249.249"   # odoh.cloudflare-dns.com — bypass circular DNS
+# strict     = true               # true (default): SERVFAIL on relay failure;
+#                                 # false: fall back to plain DoH (less private)
+# fallback   = ["9.9.9.9", "149.112.112.112"]  # used only when strict = false
+
 # Per-suffix conditional forwarding — split-horizon DNS.
 # Repeat the block for each internal domain you want routed to a specific resolver.
+# Both `suffix` and `upstream` accept a single string or an array of strings.
+# When upstream is an array, Numa uses SRTT-aware failover across all entries.
 #
 # Route .home.arpa and .local queries to the HA mDNS resolver so that
 # <hostname>.local names resolve correctly across the add-on.
@@ -65,6 +114,14 @@ hedge_ms    = 10
 # [[forwarding]]
 # suffix   = ["home.arpa", "local"]
 # upstream = "127.0.0.1"
+#
+# Example with multiple encrypted upstreams and SRTT failover:
+# [[forwarding]]
+# suffix   = ["corp.example", "168.192.in-addr.arpa"]
+# upstream = [
+#   "tls://9.9.9.9#dns.quad9.net",
+#   "tls://149.112.112.112#dns.quad9.net",
+# ]
 
 # ---------------------------------------------------------------------------
 # Ad / tracker blocking
@@ -104,7 +161,8 @@ warm = [
   "version.home-assistant.io",  # HA update checks
   "update.home-assistant.io",   # HA OTA updates
   "cdn.jsdelivr.net",           # blocklist CDN
-  "dns.quad9.net",              # DoH + DoT upstream
+  "dns.quad9.net",              # Quad9 DoH upstream
+  "cloudflare-dns.com",         # Cloudflare DoH upstream
 ]
 
 # ---------------------------------------------------------------------------
