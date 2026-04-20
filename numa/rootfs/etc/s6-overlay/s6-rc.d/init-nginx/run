@@ -4,6 +4,7 @@
 # Numa add-on: init-nginx
 # Generates nginx configuration from templates before nginx starts.
 # ==============================================================================
+set -euo pipefail
 
 # Numa API listens on loopback port 5381.
 declare -r NUMA_API_PORT=5381
