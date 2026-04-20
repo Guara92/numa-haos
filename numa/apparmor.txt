@@ -16,6 +16,9 @@ profile numa flags=(attach_disconnected,mediate_deleted) {
   # already running as root (needed if user directive is present in config)
   capability setuid,
   capability setgid,
+  # CHOWN: nginx master (root) chowns tmp dirs to the worker user on startup
+  # when 'user nginx;' is set (e.g. chown /var/lib/nginx/tmp/client_body 100)
+  capability chown,
 
   # --- Container startup ---
   /init rix,
