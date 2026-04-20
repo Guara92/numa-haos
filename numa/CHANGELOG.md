@@ -5,9 +5,6 @@
 ### Changed
 
 - Bumped upstream Numa binary from **v0.13.1 → v0.14.0**.
-  All source files are identical between the two releases; v0.14.0 is a
-  documentation, packaging and config-schema release. No behavioural changes
-  to DNS resolution, blocking or the API.
 
 ### Added
 
