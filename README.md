@@ -9,8 +9,8 @@
 [![GitHub Activity][commits-shield]][commits]
 
 A Home Assistant App repository for **Numa** — a self-hosted DNS resolver with
-ad blocking, local service discovery, DNS-over-HTTPS/TLS, and a built-in
-reverse proxy for `.numa` domains.
+**ad blocking enabled by default**, encrypted DNS-over-HTTPS upstream, local
+service discovery, DNS-over-TLS, and a built-in reverse proxy for `.numa` domains.
 
 ## About
 
@@ -22,7 +22,15 @@ makes local services reachable at human-friendly `.numa` addresses.
 This repository provides the Home Assistant App that lets you install and run
 Numa directly from the Home Assistant Supervisor, with:
 
-- **Sidebar access** to the Numa dashboard via Home Assistant Ingress.
+- **Sidebar access** to the Numa dashboard via Home Assistant Ingress — fully
+  functional through a built-in nginx proxy layer.
+- **Ad blocking on by default** — [Hagezi Pro][hagezi] (385 K+ domains) is
+  active from the first boot, refreshed every 24 h.
+- **Encrypted upstream DNS** — queries are forwarded to Quad9 over
+  DNS-over-HTTPS by default; your ISP cannot observe your DNS traffic.
+- **DoT listener enabled** — clients on your LAN can use port 853 for
+  encrypted DNS-over-TLS queries without reconfiguring existing plain-UDP
+  clients.
 - **Persistent configuration** — your `numa.toml` survives restarts and updates.
 - **Minimal config workflow** — edit `numa.toml` from within Home Assistant,
   no SSH required.
@@ -76,6 +84,7 @@ See [LICENSE](LICENSE) for the full text.
 [commits-shield]: https://img.shields.io/github/commit-activity/y/Guara92/numa-haos.svg
 [commits]: https://github.com/Guara92/numa-haos/commits/main
 [license-shield]: https://img.shields.io/github/license/Guara92/numa-haos.svg
+[hagezi]: https://github.com/hagezi/dns-blocklists
 [numa]: https://github.com/razvandimescu/numa
 [numa-version-shield]: https://img.shields.io/badge/version-0.2.0-blue.svg
 [project-stage-shield]: https://img.shields.io/badge/project%20stage-experimental-yellow.svg

@@ -41,6 +41,14 @@ profile numa flags=(attach_disconnected,mediate_deleted) {
   /etc/numa/                     r,
   /etc/numa/**                   r,
 
+  # --- nginx binary (Alpine installs to /usr/sbin/nginx) ---
+  /usr/sbin/nginx                mrix,
+
+  # --- nginx config, templates (read) and runtime-generated files (write) ---
+  # tempio writes upstream.conf and ingress.conf into /etc/nginx at startup.
+  /etc/nginx/                    r,
+  /etc/nginx/**                  rw,
+
   # S6-Overlay
   /init rix,
   /bin/** rix,
