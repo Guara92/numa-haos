@@ -70,10 +70,16 @@ profile numa flags=(attach_disconnected,mediate_deleted) {
 
   # --- Write to parent-process file descriptors ---
   # nginx error_log is redirected to /proc/1/fd/1 (container stdout).
-  # The existing @{PROC}/@{pid}/fd/ rule only allows directory-read on the
-  # current process's own fd dir; PID 1's fd and actual fd writes need this.
+  # Only PID 1's stdout fd needs to be writable — granting rw to all process
+  # fds would be unnecessarily broad. Directory-read on any pid's fd dir is
+  # kept for tools that introspect their own open fds (e.g. s6, bashio).
+  # NOTE: child-profile scoping of setuid/setgid (CodeRabbit nitpick) is
+  # intentionally not implemented — HA Supervisor loads AppArmor profiles as
+  # flat files; Cx child profiles would require duplicating all nginx rules and
+  # are not used by any official HA add-on. Risk is minimal: Numa is a
+  # single-purpose DNS binary with no reason to call setuid/setgid.
   @{PROC}/[0-9]*/fd/             r,
-  @{PROC}/[0-9]*/fd/**           rw,
+  @{PROC}/1/fd/1                 rw,
 
   # S6-Overlay
   /init rix,
