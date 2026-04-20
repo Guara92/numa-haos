@@ -77,5 +77,5 @@ See [LICENSE](LICENSE) for the full text.
 [commits]: https://github.com/Guara92/numa-haos/commits/main
 [license-shield]: https://img.shields.io/github/license/Guara92/numa-haos.svg
 [numa]: https://github.com/razvandimescu/numa
-[numa-version-shield]: https://img.shields.io/badge/version-0.1.1-blue.svg
+[numa-version-shield]: https://img.shields.io/badge/version-0.2.0-blue.svg
 [project-stage-shield]: https://img.shields.io/badge/project%20stage-experimental-yellow.svg
