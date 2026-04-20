@@ -12,6 +12,10 @@ profile numa flags=(attach_disconnected,mediate_deleted) {
   capability sys_resource,
   capability dac_override,
   capability dac_read_search,
+  # SETUID/SETGID: nginx 'user' directive calls setuid/setgid even when
+  # already running as root (needed if user directive is present in config)
+  capability setuid,
+  capability setgid,
 
   # --- Container startup ---
   /init rix,
@@ -48,6 +52,28 @@ profile numa flags=(attach_disconnected,mediate_deleted) {
   # tempio writes upstream.conf and ingress.conf into /etc/nginx at startup.
   /etc/nginx/                    r,
   /etc/nginx/**                  rw,
+
+  # --- nginx runtime state and default log directory ---
+  # nginx opens /var/lib/nginx/logs/error.log as its built-in default error
+  # log BEFORE reading nginx.conf (so error_log /proc/1/fd/1 in the config
+  # doesn't help for this first open). Both paths must be writable.
+  /var/lib/nginx/                rw,
+  /var/lib/nginx/**              rw,
+  /var/log/nginx/                rw,
+  /var/log/nginx/**              rw,
+
+  # --- User/group resolution (getpwnam/getgrnam called by nginx) ---
+  # abstractions/base does NOT include passwd/group — add them explicitly.
+  /etc/passwd                    r,
+  /etc/group                     r,
+  /etc/nsswitch.conf             r,
+
+  # --- Write to parent-process file descriptors ---
+  # nginx error_log is redirected to /proc/1/fd/1 (container stdout).
+  # The existing @{PROC}/@{pid}/fd/ rule only allows directory-read on the
+  # current process's own fd dir; PID 1's fd and actual fd writes need this.
+  @{PROC}/[0-9]*/fd/             r,
+  @{PROC}/[0-9]*/fd/**           rw,
 
   # S6-Overlay
   /init rix,
