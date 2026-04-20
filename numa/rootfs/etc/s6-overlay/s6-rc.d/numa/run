@@ -86,14 +86,22 @@ bashio::log.info "Binary : $(numa version 2>&1 || true)"
 #   by a broken system resolver.  Verifies TCP + TLS + HTTP works.
 #   Up to 10 × 3 s = 30 s.
 #
-# Circular-DNS fix — /etc/resolv.conf injection
+# Circular-DNS fix — /etc/resolv.conf injection (bootstrap only)
 #   After Phase 1 confirms the internet is reachable, prepend "nameserver
-#   9.9.9.9" to the container's /etc/resolv.conf.  Docker gives every
-#   container its own mount namespace, so this edit is local to the container
-#   and does NOT touch the host's resolver or affect DHCP clients on the LAN
-#   (they still use Numa as their DNS server).  With 9.9.9.9 listed first,
-#   getaddrinfo() inside reqwest resolves against Quad9 directly, bypassing
-#   the circular dependency entirely — even during periodic blocklist refreshes.
+#   9.9.9.9" to the container's /etc/resolv.conf as a TEMPORARY bootstrap
+#   measure.  The original file contents are saved to /tmp/resolv.conf.numa.orig
+#   and are restored just before exec-ing Numa, so that steady-state DNS
+#   resolution goes through Numa (which is running by then and can answer
+#   queries itself).
+#
+#   The injection is done in-place (cat > /etc/resolv.conf) rather than with
+#   mv, so the original inode is preserved.  Docker bind-mounts resolv.conf
+#   into the container; replacing the inode with mv would silently break that
+#   bind-mount for the lifetime of the container.
+#
+#   Docker gives every container its own mount namespace, so this edit is
+#   local to the container and does NOT touch the host's resolver or affect
+#   DHCP clients on the LAN (they still use Numa as their DNS server).
 #
 # Phase 2 — System DNS validation
 #   Runs curl WITHOUT --resolve against the actual blocklist URL to confirm
@@ -132,15 +140,24 @@ if [ "${_net_ready}" != "true" ]; then
     bashio::log.warning "Blocklist download may fail at startup; it will retry after refresh_hours."
 fi
 
-# --- Circular-DNS fix: inject Quad9 into /etc/resolv.conf ---
+# --- Circular-DNS fix: inject Quad9 into /etc/resolv.conf (bootstrap only) ---
 # Only attempted once IP connectivity (Phase 1) is confirmed.
 # Skip silently if 9.9.9.9 is already present or the file is read-only.
+# The original file is saved and will be restored just before exec.
+declare _restore_resolv_conf=false
 if [ "${_net_ready}" = "true" ]; then
     if ! grep -q '^nameserver 9\.9\.9\.9' /etc/resolv.conf 2>/dev/null; then
-        bashio::log.info "Injecting Quad9 fallback into /etc/resolv.conf (breaks circular DNS dependency)..."
-        printf 'nameserver 9.9.9.9\n' | cat - /etc/resolv.conf > /tmp/resolv.conf.numa \
-            && mv /tmp/resolv.conf.numa /etc/resolv.conf \
-            || bashio::log.warning "/etc/resolv.conf is read-only — circular DNS dependency may persist; blocklist download may fail."
+        bashio::log.info "Injecting Quad9 bootstrap resolver into /etc/resolv.conf (breaks circular DNS dependency)..."
+        if cp /etc/resolv.conf /tmp/resolv.conf.numa.orig 2>/dev/null; then
+            # Build new content in a temp file, then overwrite in-place so the
+            # original inode is preserved (required for Docker bind-mount compatibility).
+            { printf 'nameserver 9.9.9.9\n'; cat /tmp/resolv.conf.numa.orig; } > /tmp/resolv.conf.numa \
+                && cat /tmp/resolv.conf.numa > /etc/resolv.conf \
+                && _restore_resolv_conf=true \
+                || bashio::log.warning "/etc/resolv.conf is read-only — circular DNS dependency may persist; blocklist download may fail."
+        else
+            bashio::log.warning "Could not back up /etc/resolv.conf — skipping Quad9 injection."
+        fi
     else
         bashio::log.debug "Quad9 already present in /etc/resolv.conf, no injection needed."
     fi
@@ -180,6 +197,18 @@ fi
 # All DNS/API/port settings come from the TOML file itself; we do not
 # patch them here: numa.toml is the single source of truth.
 # ------------------------------------------------------------------------------
+# --- Restore original /etc/resolv.conf before handing off to Numa ---
+# The bootstrap Quad9 entry is only needed during startup so that
+# getaddrinfo() can reach the blocklist CDN before Numa's recv_from loop
+# is ready.  Now that we are about to exec Numa, it will own port 53 and
+# can answer DNS queries itself — so we restore the original file to
+# preserve steady-state resolution order.
+if [ "${_restore_resolv_conf}" = "true" ] && [ -f /tmp/resolv.conf.numa.orig ]; then
+    cat /tmp/resolv.conf.numa.orig > /etc/resolv.conf \
+        && bashio::log.debug "Restored original /etc/resolv.conf before exec." \
+        || bashio::log.warning "Failed to restore /etc/resolv.conf — Quad9 will remain as bootstrap resolver."
+fi
+
 bashio::log.info "Launching Numa..."
 
 exec /usr/local/bin/numa "${numa_config}"
