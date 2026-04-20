@@ -119,7 +119,9 @@ profile numa flags=(attach_disconnected,mediate_deleted) {
   @{PROC}/sys/net/core/somaxconn r,
 
   # --- DNS resolver bootstrap (upstream DoH/DoT TLS handshake) ---
-  /etc/resolv.conf               r,
+  # rw: the s6 run script temporarily prepends 9.9.9.9 to break the circular
+  # DNS dependency at startup, then restores the original before exec-ing Numa.
+  /etc/resolv.conf               rw,
   /etc/hosts                     r,
   /etc/ssl/certs/**              r,
   /etc/ca-certificates/**        r,
