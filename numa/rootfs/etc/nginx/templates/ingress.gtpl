@@ -13,7 +13,6 @@ server {
         # available as $http_x_ingress_path which we embed into the HTML.
         sub_filter "const API = '';" "const API = '$http_x_ingress_path';";
         sub_filter_once on;
-        sub_filter_types text/html;
 
         proxy_pass http://numa_backend;
     }
