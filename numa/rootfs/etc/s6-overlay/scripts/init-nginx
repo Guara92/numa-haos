@@ -3,6 +3,7 @@
 # ==============================================================================
 # Numa add-on: init-nginx
 # Generates nginx configuration from templates before nginx starts.
+# Called from /etc/s6-overlay/s6-rc.d/init-nginx/up (execlineb single-line).
 # ==============================================================================
 set -euo pipefail
 
