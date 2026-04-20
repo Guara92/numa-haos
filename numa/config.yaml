@@ -32,7 +32,7 @@ map:
   - type: data
     read_only: false
 options:
-  log_level: info
+  log_level: warning
   config_source: default
 schema:
   log_level: list(trace|debug|info|notice|warning|error|fatal)?
