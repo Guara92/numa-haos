@@ -81,113 +81,78 @@ bashio::log.info "Binary : $(numa version 2>&1 || true)"
 #   4. Numa has the socket but the recv_from loop hasn't started yet.
 #   5. The query sits unanswered until getaddrinfo times out → download fails.
 #
-# Phase 1 — Outbound IP connectivity (DNS-independent)
-#   Probes Quad9 by its hardcoded IP so this check cannot itself be blocked
-#   by a broken system resolver.  Verifies TCP + TLS + HTTP works.
-#   Up to 10 × 3 s = 30 s.
+# Circular-DNS fix — /etc/resolv.conf injection (bootstrap only, instant)
+#   Prepend "nameserver 9.9.9.9" to the container's /etc/resolv.conf as a
+#   TEMPORARY bootstrap measure.  Done immediately — no network access required.
+#   The original file contents are saved to /tmp/resolv.conf.numa.orig and are
+#   restored just before exec-ing Numa, so that steady-state DNS resolution goes
+#   through Numa (which is running by then and can answer queries itself).
 #
-# Circular-DNS fix — /etc/resolv.conf injection (bootstrap only)
-#   After Phase 1 confirms the internet is reachable, prepend "nameserver
-#   9.9.9.9" to the container's /etc/resolv.conf as a TEMPORARY bootstrap
-#   measure.  The original file contents are saved to /tmp/resolv.conf.numa.orig
-#   and are restored just before exec-ing Numa, so that steady-state DNS
-#   resolution goes through Numa (which is running by then and can answer
-#   queries itself).
+#   The injection is done in-place (cat > /etc/resolv.conf) rather than with mv,
+#   so the original inode is preserved.  Docker bind-mounts resolv.conf into the
+#   container; replacing the inode with mv would silently break that bind-mount
+#   for the lifetime of the container.
 #
-#   The injection is done in-place (cat > /etc/resolv.conf) rather than with
-#   mv, so the original inode is preserved.  Docker bind-mounts resolv.conf
-#   into the container; replacing the inode with mv would silently break that
-#   bind-mount for the lifetime of the container.
+#   Docker gives every container its own mount namespace, so this edit is local
+#   to the container and does NOT touch the host's resolver or affect DHCP
+#   clients on the LAN (they still use Numa as their DNS server).
 #
-#   Docker gives every container its own mount namespace, so this edit is
-#   local to the container and does NOT touch the host's resolver or affect
-#   DHCP clients on the LAN (they still use Numa as their DNS server).
-#
-# Phase 2 — System DNS validation
-#   Runs curl WITHOUT --resolve against the actual blocklist URL to confirm
-#   that the system resolver (now including 9.9.9.9) can reach the CDN.
-#   Up to 10 × 3 s = 30 s.
+# Network readiness check (brief, non-blocking)
+#   Probes Quad9 by its hardcoded IP so this check cannot itself be blocked by a
+#   broken system resolver.  Capped at 3 × 2 s = ~10 s worst case so the total
+#   startup delay is bounded well within the HA watchdog window.  If the network
+#   is not reachable yet we proceed immediately — Numa starts and the blocklist
+#   will be retried after refresh_hours.
 #
 # NOTE: the proper long-term fix is upstream in Numa: download_blocklists()
 # should use Numa's own configured DoH upstreams (or a hardcoded fallback IP)
 # instead of relying on getaddrinfo().  A GitHub issue has been filed:
 # https://github.com/razvandimescu/numa/issues  (see CHANGELOG for link).
-#
-# If either phase does not complete within its window we log a warning and
-# proceed anyway — Numa will still start and serve DNS; the blocklist will be
-# retried after refresh_hours.
 # ------------------------------------------------------------------------------
 
-# --- Phase 1: outbound IP connectivity (DNS-independent) ---
-bashio::log.info "Waiting for outbound network connectivity (Phase 1: IP)..."
+# --- Circular-DNS fix: inject Quad9 into /etc/resolv.conf (bootstrap only) ---
+# Done immediately — no network access required (just cp + cat).
+# Skip silently if 9.9.9.9 is already present or the file is read-only.
+# The original file is saved and will be restored just before exec.
+declare _restore_resolv_conf=false
+if ! grep -q '^nameserver 9\.9\.9\.9' /etc/resolv.conf 2>/dev/null; then
+    bashio::log.info "Injecting Quad9 bootstrap resolver into /etc/resolv.conf (circular DNS fix)..."
+    if cp /etc/resolv.conf /tmp/resolv.conf.numa.orig 2>/dev/null; then
+        # Build new content in a temp file, then overwrite in-place so the
+        # original inode is preserved (required for Docker bind-mount compatibility).
+        { printf 'nameserver 9.9.9.9\n'; cat /tmp/resolv.conf.numa.orig; } > /tmp/resolv.conf.numa \
+            && cat /tmp/resolv.conf.numa > /etc/resolv.conf \
+            && _restore_resolv_conf=true \
+            || bashio::log.warning "/etc/resolv.conf is read-only — circular DNS dependency may persist; blocklist download may fail."
+    else
+        bashio::log.warning "Could not back up /etc/resolv.conf — skipping Quad9 injection."
+    fi
+else
+    bashio::log.debug "Quad9 already present in /etc/resolv.conf, no injection needed."
+fi
+
+# --- Network readiness check (brief, non-blocking) ---
+# Probes Quad9 by hardcoded IP — cannot be blocked by a broken system resolver.
+# Capped at 3 attempts × 2 s sleep = ~10 s worst case so Numa is always exec'd
+# well within the HA watchdog / Docker HEALTHCHECK start-period window.
+# On failure we proceed immediately; the blocklist will retry after refresh_hours.
 declare _net_ready=false
-for _attempt in $(seq 1 10); do
+for _attempt in 1 2 3; do
     if curl --silent \
-            --max-time 3 --connect-timeout 3 \
+            --max-time 2 --connect-timeout 2 \
             --output /dev/null \
             --resolve "dns.quad9.net:443:9.9.9.9" \
             "https://dns.quad9.net/dns-query?name=dns.quad9.net&type=A" 2>/dev/null; then
         _net_ready=true
-        bashio::log.debug "Outbound network ready (attempt ${_attempt}/10)"
+        bashio::log.debug "Outbound network ready (attempt ${_attempt}/3)"
         break
     fi
-    bashio::log.debug "Network not ready yet (attempt ${_attempt}/10), retrying in 3s..."
-    sleep 3
+    bashio::log.debug "Network not ready yet (attempt ${_attempt}/3)..."
+    [ "${_attempt}" -lt 3 ] && sleep 2
 done
 
 if [ "${_net_ready}" != "true" ]; then
-    bashio::log.warning "Outbound network not confirmed after 30s — proceeding anyway."
-    bashio::log.warning "Blocklist download may fail at startup; it will retry after refresh_hours."
-fi
-
-# --- Circular-DNS fix: inject Quad9 into /etc/resolv.conf (bootstrap only) ---
-# Only attempted once IP connectivity (Phase 1) is confirmed.
-# Skip silently if 9.9.9.9 is already present or the file is read-only.
-# The original file is saved and will be restored just before exec.
-declare _restore_resolv_conf=false
-if [ "${_net_ready}" = "true" ]; then
-    if ! grep -q '^nameserver 9\.9\.9\.9' /etc/resolv.conf 2>/dev/null; then
-        bashio::log.info "Injecting Quad9 bootstrap resolver into /etc/resolv.conf (breaks circular DNS dependency)..."
-        if cp /etc/resolv.conf /tmp/resolv.conf.numa.orig 2>/dev/null; then
-            # Build new content in a temp file, then overwrite in-place so the
-            # original inode is preserved (required for Docker bind-mount compatibility).
-            { printf 'nameserver 9.9.9.9\n'; cat /tmp/resolv.conf.numa.orig; } > /tmp/resolv.conf.numa \
-                && cat /tmp/resolv.conf.numa > /etc/resolv.conf \
-                && _restore_resolv_conf=true \
-                || bashio::log.warning "/etc/resolv.conf is read-only — circular DNS dependency may persist; blocklist download may fail."
-        else
-            bashio::log.warning "Could not back up /etc/resolv.conf — skipping Quad9 injection."
-        fi
-    else
-        bashio::log.debug "Quad9 already present in /etc/resolv.conf, no injection needed."
-    fi
-fi
-
-# --- Phase 2: system DNS resolution ---
-# Validates that getaddrinfo() can now reach the blocklist CDN.
-# With 9.9.9.9 injected above this should succeed on the first attempt;
-# the retry loop is a safety net for slow internet or read-only resolv.conf.
-# Uses --head to avoid downloading the full ~10 MB blocklist file.
-if [ "${_net_ready}" = "true" ]; then
-    bashio::log.info "Waiting for DNS resolution (Phase 2: system resolver)..."
-    declare _dns_ready=false
-    for _attempt in $(seq 1 10); do
-        if curl --silent \
-                --max-time 5 --connect-timeout 5 \
-                --head --output /dev/null \
-                "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/hosts/pro.txt" 2>/dev/null; then
-            _dns_ready=true
-            bashio::log.debug "DNS resolution ready (attempt ${_attempt}/10)"
-            break
-        fi
-        bashio::log.debug "DNS not ready yet (attempt ${_attempt}/10), retrying in 3s..."
-        sleep 3
-    done
-
-    if [ "${_dns_ready}" != "true" ]; then
-        bashio::log.warning "DNS resolution not confirmed after 30s — proceeding anyway."
-        bashio::log.warning "Blocklist download may fail at startup; it will retry after refresh_hours."
-    fi
+    bashio::log.warning "Outbound network not confirmed — proceeding anyway; blocklist will retry after refresh_hours."
 fi
 
 # ------------------------------------------------------------------------------
