@@ -38,13 +38,14 @@ data_dir      = "/data/numa"
 #   - Blocks malware / phishing domains at the resolver level
 #   - Performs DNSSEC chain-of-trust validation on every response
 #   - No logging, GDPR-compliant (https://www.quad9.net/privacy/)
-# We use DoH as primary and DoT as secondary — both hit the same secured
-# endpoint. Numa's request hedging picks whichever answers first.
+# We use DoH as primary and DoT (two anycast IPs) as secondaries — all hit
+# the same secured endpoint. Numa's request hedging picks whichever answers
+# first. DoT format requires tls://IP#hostname (the hostname is the TLS SNI).
 # NOTE: dns11.quad9.net is Quad9's ECS variant (sends a partial client IP
 # to upstreams for geo-optimisation) — we intentionally avoid it.
 [upstream]
 mode    = "forward"
-address = ["https://dns.quad9.net/dns-query", "tls://dns.quad9.net"]
+address = ["https://dns.quad9.net/dns-query", "tls://9.9.9.9#dns.quad9.net", "tls://149.112.112.112#dns.quad9.net"]
 # Plain UDP fallback — used only when all encrypted upstreams fail (e.g. no
 # internet yet during boot). Same secured Quad9 anycast IPs.
 fallback    = ["9.9.9.9", "149.112.112.112"]
