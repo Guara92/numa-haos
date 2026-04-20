@@ -83,22 +83,30 @@ hedge_ms    = 10
 # The relay is operated by the Numa project; the target is Cloudflare's
 # ODoH resolver. You can substitute any RFC 9230-compliant relay/target pair.
 #
-# IMPORTANT — relay_ip / target_ip (bootstrap IPs):
-#   When this add-on is the DNS server for the LAN (i.e. your router's DHCP
-#   hands out Home Assistant's IP as DNS), Numa's own outgoing HTTPS
-#   connections would need to resolve the relay/target hostnames through
-#   itself — a circular dependency. relay_ip and target_ip break this by
-#   providing a hardcoded IP so the TLS connection is established by IP while
-#   the cert is still validated against the correct hostname (SNI).
-#   Values below are the current IPs for odoh-relay.numa.rs and
-#   odoh.cloudflare-dns.com — update them if the relay moves.
+# relay_ip / target_ip (bootstrap IPs) — circular-DNS safety net:
+#   When this add-on is the LAN DNS server (router DHCP hands out HA's IP),
+#   Numa's outgoing HTTPS connections to the relay/target would need to
+#   resolve those hostnames through itself — a circular dependency at startup.
+#   relay_ip and target_ip inject a hardcoded IP into the reqwest client via
+#   .resolve(), bypassing getaddrinfo() entirely. TLS still validates the cert
+#   against the correct hostname (SNI), so security is preserved.
+#
+#   With this add-on's startup fix (9.9.9.9 injected into /etc/resolv.conf
+#   before Numa starts) the bootstrap IPs are NOT strictly required — DNS
+#   already works through Quad9. They add an extra layer of robustness: even
+#   if the resolv.conf injection is unavailable, ODoH DNS forwarding works.
+#
+#   To find the current IPs run from the HA terminal (while another DNS is
+#   still active, e.g. before switching your router's DHCP DNS to HA):
+#     dig +short odoh-relay.numa.rs
+#     dig +short odoh.cloudflare-dns.com
 #
 # [upstream]
 # mode       = "odoh"
 # relay      = "https://odoh-relay.numa.rs/relay"
 # target     = "https://odoh.cloudflare-dns.com/dns-query"
-# relay_ip   = "178.104.229.30"   # odoh-relay.numa.rs  — bypass circular DNS
-# target_ip  = "104.16.249.249"   # odoh.cloudflare-dns.com — bypass circular DNS
+# relay_ip   = "178.104.229.30"   # odoh-relay.numa.rs
+# target_ip  = "162.159.62.1"     # odoh.cloudflare-dns.com (verify with: dig +short odoh.cloudflare-dns.com)
 # strict     = true               # true (default): SERVFAIL on relay failure;
 #                                 # false: fall back to plain DoH (less private)
 # fallback   = ["9.9.9.9", "149.112.112.112"]  # used only when strict = false
