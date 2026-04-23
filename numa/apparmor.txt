@@ -119,7 +119,7 @@ profile numa flags=(attach_disconnected,mediate_deleted) {
   @{PROC}/sys/net/core/somaxconn r,
 
   # --- DNS resolver bootstrap ---
-  /etc/resolv.conf               w,
+  /etc/resolv.conf               r,
   /etc/hosts                     r,
   /etc/ssl/certs/**              r,
   /etc/ca-certificates/**        r,

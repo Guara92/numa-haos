@@ -77,8 +77,9 @@ bashio::log.info "Binary : $(numa version 2>&1 || true)"
 declare _net_ready=false
 for _attempt in 1 2 3; do
     if curl --silent --max-time 2 --connect-timeout 2 \
-            --output /dev/null \
-            "https://1.1.1.1/dns-query?name=dns.quad9.net&type=A" 2>/dev/null; then
+        --fail \
+        --output /dev/null \
+        "https://1.1.1.1/dns-query?name=dns.quad9.net&type=A" 2>/dev/null; then
         _net_ready=true
         bashio::log.debug "Outbound network ready (attempt ${_attempt}/3)"
         break

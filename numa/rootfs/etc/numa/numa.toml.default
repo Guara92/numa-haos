@@ -37,19 +37,12 @@ data_dir      = "/data/numa"
 # DNS-over-HTTPS (https://) or DNS-over-TLS (tls://) encrypt the traffic
 # between Numa and the upstream so your ISP cannot observe your queries.
 #
-# Primary: Quad9 secured endpoint (dns.quad9.net):
+# Primary: Quad9 secured endpoint (https://9.9.9.9/dns-query):
 #   - Blocks malware / phishing domains at the resolver level
 #   - Performs DNSSEC chain-of-trust validation on every response
 #   - No logging, GDPR-compliant (https://www.quad9.net/privacy/)
-# Secondary: Cloudflare 1.1.1.1 DoH by IP — referenced as https://1.1.1.1/dns-query
-#   (not https://cloudflare-dns.com/dns-query) so that reqwest can connect
-#   directly to the IP without calling getaddrinfo().  This is critical for
-#   breaking the circular-DNS bootstrap: when the container's system resolver
-#   (172.30.32.3, HA Supervisor DNS) forwards through the host DNS which may
-#   itself point back to Numa, any hostname-based upstream triggers the loop.
-#   With an IP-based URL reqwest skips hostname resolution entirely; Cloudflare
-#   issues a TLS certificate that covers 1.1.1.1 so the handshake succeeds.
-#   Cloudflare also offers DNSSEC validation.
+# Secondary: Cloudflare 1.1.1.1 DoH (https://1.1.1.1/dns-query):
+#   - Performs DNSSEC chain-of-trust validation on every response
 #
 # Why DoH only (no DoT / tls://):
 #   DoH runs on port 443 alongside normal HTTPS traffic and is virtually

@@ -1,10 +1,10 @@
 # Changelog
 
-## [0.3.1]
+## [0.4.0]
 
 ### Changed
 
-- Bumped upstream Numa binary from **v0.13.1 → v0.14.2**.
+- Bumped upstream Numa binary from **v0.14.1 → v0.14.2**.
 - Minor updates to default config
 
 ## [0.3.0]
