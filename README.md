@@ -25,7 +25,7 @@ Numa directly from the Home Assistant Supervisor, with:
 - **Sidebar access** to the Numa dashboard via Home Assistant Ingress — fully
   functional through a built-in nginx proxy layer.
 - **Ad blocking on by default** — [Hagezi Pro][hagezi] (385 K+ domains) is
-  active from the first boot, refreshed every 24 h.
+  active from the first boot, refreshed every 6h by default.
 - **Encrypted upstream DNS** — queries are forwarded to Quad9 over
   DNS-over-HTTPS by default; your ISP cannot observe your DNS traffic.
 - **DoT listener enabled** — clients on your LAN can use port 853 for
