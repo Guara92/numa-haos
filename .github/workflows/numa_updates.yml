@@ -83,7 +83,7 @@ jobs:
           mv CHANGELOG.tmp numa/CHANGELOG.md
       - name: Create Pull Request
         if: steps.update_check.outputs.needed == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: |
