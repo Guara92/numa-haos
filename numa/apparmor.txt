@@ -118,10 +118,7 @@ profile numa flags=(attach_disconnected,mediate_deleted) {
   @{PROC}/sys/kernel/hostname    r,
   @{PROC}/sys/net/core/somaxconn r,
 
-  # --- DNS resolver bootstrap (upstream DoH/DoT TLS handshake) ---
-  # Read-only: as of Numa v0.14.1 (PR #125) blocklist downloads retry with
-  # 2s/10s/30s backoff, so the /etc/resolv.conf patching workaround that
-  # required write access has been removed from the s6 run script.
+  # --- DNS resolver bootstrap ---
   /etc/resolv.conf               r,
   /etc/hosts                     r,
   /etc/ssl/certs/**              r,

@@ -1,0 +1,102 @@
+---
+name: Update Numa Upstream
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # Run every day at 03:00
+  workflow_dispatch:
+
+jobs:
+  update-addon:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch latest Numa release
+        id: numa_release
+        run: |
+          LATEST_TAG=$(curl -sL https://api.github.com/repos/razvandimescu/numa/releases/latest | jq -r .tag_name)
+          if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "null" ]; then
+            echo "Error: Failed to fetch latest Numa release tag"
+            exit 1
+          fi
+          echo "tag=${LATEST_TAG}" >> $GITHUB_OUTPUT
+
+      - name: Extract current versions
+        id: current
+        run: |
+          # Extract current addon version (es. 0.3.5)
+          ADDON_V=$(grep '^version:' numa/config.yaml | sed -E 's/version: "?([^"]+)"?/\1/')
+
+          # Extract current Numa version from Dockerfile (es. v0.13.1)
+          # Search for ARG NUMA_VERSION="..."
+          NUMA_V=$(grep 'ARG NUMA_VERSION=' numa/Dockerfile | sed -E 's/.*="([^"]+)".*/\1/')
+
+          echo "addon_old=${ADDON_V}" >> $GITHUB_OUTPUT
+          echo "numa_old=${NUMA_V}" >> $GITHUB_OUTPUT
+
+      - name: Check whether an update is needed
+        id: update_check
+        run: |
+          if [ "${{ steps.current.outputs.numa_old }}" = "${{ steps.numa_release.outputs.tag }}" ]; then
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Calculate new Add-on version
+        id: addon_bump
+        if: steps.update_check.outputs.needed == 'true'
+        run: |
+          # Split major.minor.patch
+          IFS='.' read -r major minor patch <<< "${{ steps.current.outputs.addon_old }}"
+
+          # Minor bump and reset patch
+          NEW_MINOR=$((minor + 1))
+          NEW_VERSION="$major.$NEW_MINOR.0"
+
+          echo "new=${NEW_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Update files
+        if: steps.update_check.outputs.needed == 'true'
+        run: |
+          # 1. Update Dockerfile
+          sed -i -E 's/(ARG NUMA_VERSION=)"[^"]*"/\1"${{ steps.numa_release.outputs.tag }}"/' numa/Dockerfile
+
+          # 2. Update config.yaml
+          sed -i -E 's/^version: .*/version: "${{ steps.addon_bump.outputs.new }}"/' numa/config.yaml
+
+          NEW_ENTRY="## [${{ steps.addon_bump.outputs.new }}]\n\n### Changed\n\n- Bumped upstream Numa binary from **${{ steps.current.outputs.numa_old }} → ${{ steps.numa_release.outputs.tag }}**."
+
+          # Create a temp file starting with the main header
+          echo "# Changelog" > CHANGELOG.tmp
+          echo -e "\n$NEW_ENTRY" >> CHANGELOG.tmp
+
+          # Append everything from the original file starting from line 2 (skipping the old header)
+          tail -n +2 numa/CHANGELOG.md >> CHANGELOG.tmp
+
+          mv CHANGELOG.tmp numa/CHANGELOG.md
+      - name: Create Pull Request
+        if: steps.update_check.outputs.needed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: |
+            chore: bump numa to ${{ steps.numa_release.outputs.tag }}
+            Addon version updated to ${{ steps.addon_bump.outputs.new }}
+          title: "Update Numa to ${{ steps.numa_release.outputs.tag }}"
+          body: |
+            Automatic update of upstream dependencies.
+
+            - **Add-on**: `${{ steps.current.outputs.addon_old }}` -> `${{ steps.addon_bump.outputs.new }}`
+            - **Numa**: `${{ steps.current.outputs.numa_old }}` -> `${{ steps.numa_release.outputs.tag }}`
+
+            `numa/Dockerfile`, `numa/config.yaml` and `numa/CHANGELOG.md` files have been updated.
+          branch: "update/numa-${{ steps.numa_release.outputs.tag }}"
+          base: main
+          labels: "automated-update"

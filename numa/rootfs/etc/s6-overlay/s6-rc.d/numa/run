@@ -61,31 +61,25 @@ fi
 
 bashio::log.info "Config : ${numa_config}"
 bashio::log.info "Binary : $(numa version 2>&1 || true)"
+
 # ------------------------------------------------------------------------------
-# Network readiness check
+# Network readiness check (brief, non-blocking)
 #
-# Probes Quad9 by its hardcoded IP (DNS-independent) to give the blocklist
-# downloader the best chance of succeeding on first boot.  This is a
-# best-effort check: if the network is not reachable within the window Numa
-# starts immediately anyway.
-#
-# As of Numa v0.14.1 (upstream PR #125) the blocklist downloader retries
-# automatically with 2 s / 10 s / 30 s backoff, so transient DNS races at
-# startup (including the circular-dependency case where the router DHCP
-# hands out the HA IP as the DNS server) are handled inside Numa itself.
-# No /etc/resolv.conf patching is needed from this script.
-#
-# 3 attempts × 2 s sleep = ~10 s worst case — well within the watchdog window.
+# Probe Cloudflare DoH by IP (1.1.1.1:443) — no DNS lookup needed, consistent
+# with the primary upstream in numa.toml.default (https://1.1.1.1/dns-query).
+# Gives the blocklist downloader the best chance of succeeding on first boot.
+# Capped at 3 attempts × 2 s = ~10 s worst case.
+# On failure Numa starts immediately; the blocklist will retry with the
+# built-in backoff (Numa v0.14.1, PR #125).
 # ------------------------------------------------------------------------------
 
 # --- Network readiness check (brief, non-blocking) ---
 declare _net_ready=false
 for _attempt in 1 2 3; do
-    if curl --silent \
-            --max-time 2 --connect-timeout 2 \
-            --output /dev/null \
-            --resolve "dns.quad9.net:443:9.9.9.9" \
-            "https://dns.quad9.net/dns-query?name=dns.quad9.net&type=A" 2>/dev/null; then
+    if curl --silent --max-time 2 --connect-timeout 2 \
+        --fail \
+        --output /dev/null \
+        "https://1.1.1.1/dns-query?name=dns.quad9.net&type=A" 2>/dev/null; then
         _net_ready=true
         bashio::log.debug "Outbound network ready (attempt ${_attempt}/3)"
         break

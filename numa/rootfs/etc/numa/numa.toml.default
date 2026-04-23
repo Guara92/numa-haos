@@ -37,12 +37,12 @@ data_dir      = "/data/numa"
 # DNS-over-HTTPS (https://) or DNS-over-TLS (tls://) encrypt the traffic
 # between Numa and the upstream so your ISP cannot observe your queries.
 #
-# Primary: Quad9 secured endpoint (dns.quad9.net):
+# Primary: Quad9 secured endpoint (https://9.9.9.9/dns-query):
 #   - Blocks malware / phishing domains at the resolver level
 #   - Performs DNSSEC chain-of-trust validation on every response
 #   - No logging, GDPR-compliant (https://www.quad9.net/privacy/)
-# Secondary: Cloudflare 1.1.1.1 DoH — used as a second opinion when Quad9
-#   is slow or unreachable. Cloudflare also offers DNSSEC validation.
+# Secondary: Cloudflare 1.1.1.1 DoH (https://1.1.1.1/dns-query):
+#   - Performs DNSSEC chain-of-trust validation on every response
 #
 # Why DoH only (no DoT / tls://):
 #   DoH runs on port 443 alongside normal HTTPS traffic and is virtually
@@ -55,8 +55,8 @@ data_dir      = "/data/numa"
 [upstream]
 mode    = "forward"
 address = [
-  "https://dns.quad9.net/dns-query",       # Quad9 secured, DNSSEC, no-log
-  "https://cloudflare-dns.com/dns-query",  # Cloudflare fallback
+    "https://9.9.9.9/dns-query",      # Quad9 secured, DNSSEC, no-log via IP
+    "https://1.1.1.1/dns-query",      # Cloudflare DoH via IP
 ]
 # Plain UDP fallback — used only when all encrypted upstreams fail (e.g. no
 # internet yet during boot). Quad9 anycast IPs.
@@ -90,11 +90,6 @@ hedge_ms    = 10
 #   relay_ip and target_ip inject a hardcoded IP into the reqwest client via
 #   .resolve(), bypassing getaddrinfo() entirely. TLS still validates the cert
 #   against the correct hostname (SNI), so security is preserved.
-#
-#   With this add-on's startup fix (9.9.9.9 injected into /etc/resolv.conf
-#   before Numa starts) the bootstrap IPs are NOT strictly required — DNS
-#   already works through Quad9. They add an extra layer of robustness: even
-#   if the resolv.conf injection is unavailable, ODoH DNS forwarding works.
 #
 #   To find the current IPs run from the HA terminal (while another DNS is
 #   still active, e.g. before switching your router's DHCP DNS to HA):
@@ -130,6 +125,23 @@ hedge_ms    = 10
 #   "tls://9.9.9.9#dns.quad9.net",
 #   "tls://149.112.112.112#dns.quad9.net",
 # ]
+
+# HA Supervisor internal domains — always active, do not comment out.
+#
+# Docker/HA Supervisor always injects `search local.hass.io` into the
+# container's /etc/resolv.conf.  Numa reads this on startup and
+# auto-creates a forwarding rule for *.local.hass.io pointing to
+# 169.254.169.253 (the cloud VPC resolver fallback) — an address that is
+# unreachable in any home setup, causing every *.local.hass.io query to
+# stall for the full timeout_ms before returning SERVFAIL.
+#
+# This explicit rule overrides that auto-discovered one.  172.30.32.3 is
+# the HA Supervisor's own dnsmasq, which is authoritative for all
+# *.local.hass.io names (add-on ingress addresses, internal service
+# hostnames, etc.) and responds in <5 ms.
+[[forwarding]]
+suffix   = "local.hass.io"
+upstream = "172.30.32.3"
 
 # ---------------------------------------------------------------------------
 # Ad / tracker blocking
@@ -169,8 +181,6 @@ warm = [
   "version.home-assistant.io",  # HA update checks
   "update.home-assistant.io",   # HA OTA updates
   "cdn.jsdelivr.net",           # blocklist CDN
-  "dns.quad9.net",              # Quad9 DoH upstream
-  "cloudflare-dns.com",         # Cloudflare DoH upstream
 ]
 
 # ---------------------------------------------------------------------------
@@ -270,6 +280,6 @@ enabled = false
 # No private keys or mutable state are exposed. Safe for home LANs.
 # Think twice before enabling on untrusted networks (office Wi-Fi, etc.).
 [mobile]
-enabled = false
+enabled = true
 # port      = 8765
 # bind_addr = "0.0.0.0"
