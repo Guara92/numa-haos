@@ -16,19 +16,19 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # Install runtime dependencies
 # hadolint ignore=DL3018
 RUN apk add --no-cache \
-        curl \
-        ca-certificates \
-        nginx
+    curl \
+    ca-certificates \
+    nginx
 
 # Download and install the Numa binary for the target architecture.
 #
-# Release asset naming (confirmed from v0.13.1 GitHub release):
+# Release asset naming:
 #   aarch64 -> numa-linux-aarch64.tar.gz
 #   amd64   -> numa-linux-x86_64.tar.gz
 #
 # Each archive is a flat tarball containing a single "numa" binary.
 # hadolint ignore=DL3003,SC2155
-ARG NUMA_VERSION="v0.14.1"
+ARG NUMA_VERSION="v0.14.2"
 RUN \
     if [[ "${BUILD_ARCH}" = "aarch64" ]]; then ARCH="aarch64"; \
     elif [[ "${BUILD_ARCH}" = "amd64" ]]; then ARCH="x86_64"; \
@@ -38,8 +38,8 @@ RUN \
     && echo "Installing Numa ${NUMA_VERSION} for linux-${ARCH}..." \
     \
     && curl -fsSL \
-        "https://github.com/razvandimescu/numa/releases/download/${NUMA_VERSION}/numa-linux-${ARCH}.tar.gz" \
-        -o /tmp/numa.tar.gz \
+    "https://github.com/razvandimescu/numa/releases/download/${NUMA_VERSION}/numa-linux-${ARCH}.tar.gz" \
+    -o /tmp/numa.tar.gz \
     \
     && tar -xzf /tmp/numa.tar.gz -C /tmp/ \
     \

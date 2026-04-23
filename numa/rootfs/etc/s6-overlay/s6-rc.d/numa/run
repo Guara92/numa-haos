@@ -61,40 +61,6 @@ fi
 
 bashio::log.info "Config : ${numa_config}"
 bashio::log.info "Binary : $(numa version 2>&1 || true)"
-# ------------------------------------------------------------------------------
-# Fix /etc/resolv.conf — replace 172.30.32.3 with 127.0.0.1
-#
-# Docker generates a resolv.conf with "nameserver 172.30.32.3" (HA Supervisor
-# dnsmasq) for every add-on container.  That address only serves containers
-# on the Docker bridge network (172.30.32.0/23).  Numa runs with
-# host_network: true, which places it in the HOST's network namespace —
-# outside the bridge — so 172.30.32.3 refuses or silently drops all queries
-# (Connection refused on TCP, UDP timeout).  Every getaddrinfo() call inside
-# Numa therefore fails with EAI_AGAIN after the full options timeout:10.
-#
-# Fix: replace the unreachable nameserver with 127.0.0.1.  Numa binds to
-# 0.0.0.0:53, which includes loopback, so 127.0.0.1:53 IS Numa itself.
-# getaddrinfo() inside Numa (used by the blocklist downloader and any other
-# reqwest client that doesn't use .resolve()) will query Numa, which resolves
-# the hostname via https://1.1.1.1/dns-query — an IP-based URL that requires
-# no further getaddrinfo(), breaking any circular dependency.
-#
-# Written in-place (cat >) to preserve the original inode — Docker may
-# bind-mount /etc/resolv.conf; replacing the inode with mv would silently
-# break that bind-mount for the lifetime of the container.
-# ------------------------------------------------------------------------------
-if ! grep -q '^nameserver 127\.0\.0\.1' /etc/resolv.conf 2>/dev/null; then
-    bashio::log.info "Fixing resolv.conf: replacing 172.30.32.3 with 127.0.0.1 (loopback → Numa)..."
-    if sed 's/^nameserver 172\.30\.32\.3$/nameserver 127.0.0.1/' /etc/resolv.conf \
-            > /tmp/resolv.conf.numa \
-            && cat /tmp/resolv.conf.numa > /etc/resolv.conf; then
-        bashio::log.debug "resolv.conf fixed: $(grep '^nameserver' /etc/resolv.conf)"
-    else
-        bashio::log.warning "Could not fix resolv.conf — blocklist download will fail at startup."
-    fi
-else
-    bashio::log.debug "resolv.conf already points to 127.0.0.1, no fix needed."
-fi
 
 # ------------------------------------------------------------------------------
 # Network readiness check (brief, non-blocking)

@@ -118,18 +118,8 @@ profile numa flags=(attach_disconnected,mediate_deleted) {
   @{PROC}/sys/kernel/hostname    r,
   @{PROC}/sys/net/core/somaxconn r,
 
-  # --- DNS resolver bootstrap (getaddrinfo path fix) ---
-  # rw: the s6 run script replaces "nameserver 172.30.32.3" with
-  # "nameserver 127.0.0.1" in /etc/resolv.conf before launching Numa.
-  # 172.30.32.3 (HA Supervisor dnsmasq) is unreachable from host_network
-  # containers — it only serves the Docker bridge network.  127.0.0.1:53
-  # is Numa itself (bind_addr = "0.0.0.0:53"), so getaddrinfo() inside Numa
-  # (blocklist downloads, DoH reconnections) routes to Numa, which resolves
-  # via https://1.1.1.1/dns-query (IP literal — no recursive getaddrinfo).
-  # The sed output is staged in /tmp/resolv.conf.numa and cat'd back in-place
-  # to preserve the original inode (Docker may bind-mount this file).
-  # See the run script and docs/dns-bootstrap-postmortem.md (Root Cause 4).
-  /etc/resolv.conf               rw,
+  # --- DNS resolver bootstrap ---
+  /etc/resolv.conf               w,
   /etc/hosts                     r,
   /etc/ssl/certs/**              r,
   /etc/ca-certificates/**        r,

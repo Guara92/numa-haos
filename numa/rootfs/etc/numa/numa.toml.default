@@ -62,12 +62,8 @@ data_dir      = "/data/numa"
 [upstream]
 mode    = "forward"
 address = [
-  "https://1.1.1.1/dns-query",              # Cloudflare DoH by IP — no hostname resolution needed;
-                                            # breaks the circular-DNS bootstrap (reqwest connects
-                                            # directly to the IP, skipping getaddrinfo entirely).
-                                            # Cloudflare issues a TLS cert that covers 1.1.1.1 so
-                                            # the handshake succeeds without any DNS lookup.
-  "https://dns.quad9.net/dns-query",        # Quad9 secured, DNSSEC, no-log
+    "https://9.9.9.9/dns-query",      # Quad9 secured, DNSSEC, no-log via IP
+    "https://1.1.1.1/dns-query",      # Cloudflare DoH via IP
 ]
 # Plain UDP fallback — used only when all encrypted upstreams fail (e.g. no
 # internet yet during boot). Quad9 anycast IPs.
@@ -101,11 +97,6 @@ hedge_ms    = 10
 #   relay_ip and target_ip inject a hardcoded IP into the reqwest client via
 #   .resolve(), bypassing getaddrinfo() entirely. TLS still validates the cert
 #   against the correct hostname (SNI), so security is preserved.
-#
-#   With this add-on's startup fix (9.9.9.9 injected into /etc/resolv.conf
-#   before Numa starts) the bootstrap IPs are NOT strictly required — DNS
-#   already works through Quad9. They add an extra layer of robustness: even
-#   if the resolv.conf injection is unavailable, ODoH DNS forwarding works.
 #
 #   To find the current IPs run from the HA terminal (while another DNS is
 #   still active, e.g. before switching your router's DHCP DNS to HA):
@@ -197,7 +188,6 @@ warm = [
   "version.home-assistant.io",  # HA update checks
   "update.home-assistant.io",   # HA OTA updates
   "cdn.jsdelivr.net",           # blocklist CDN
-  "dns.quad9.net",              # Quad9 DoH upstream
 ]
 
 # ---------------------------------------------------------------------------
@@ -297,6 +287,6 @@ enabled = false
 # No private keys or mutable state are exposed. Safe for home LANs.
 # Think twice before enabling on untrusted networks (office Wi-Fi, etc.).
 [mobile]
-enabled = false
+enabled = true
 # port      = 8765
 # bind_addr = "0.0.0.0"
