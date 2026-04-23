@@ -55,14 +55,16 @@ jobs:
           # 2. Update config.yaml
           sed -i -E 's/^version: .*/version: "${{ steps.addon_bump.outputs.new }}"/' config.yaml
 
-          # 3. Update CHANGELOG.md
-          # Create new entry
-          NEW_ENTRY="## [${{ steps.addon_bump.outputs.new }}]\n\n### Changed\n\n- Bumped upstream Numa binary from **${{ steps.current.outputs.numa_old }} → ${{ steps.numa_release.outputs.tag }}**.\n"
+          NEW_ENTRY="## [${{ steps.addon_bump.outputs.new }}]\n\n### Changed\n\n- Bumped upstream Numa binary from **${{ steps.current.outputs.numa_old }} → ${{ steps.numa_release.outputs.tag }}**."
 
-          # Insert entry at the top of the file (or after the title if preferred)
-          # Here we insert it at line 1
-          echo -e "$NEW_ENTRY\n$(cat CHANGELOG.md)" > CHANGELOG.md
+          # Create a temp file starting with the main header
+          echo "# Changelog" > CHANGELOG.tmp
+          echo -e "\n$NEW_ENTRY" >> CHANGELOG.tmp
 
+          # Append everything from the original file starting from line 2 (skipping the old header)
+          tail -n +2 CHANGELOG.md >> CHANGELOG.tmp
+
+          mv CHANGELOG.tmp CHANGELOG.md
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
         with:
