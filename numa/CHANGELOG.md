@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.5.1]
+
+### Changed
+
+- Fixed networking check in run script.
+
 ## [0.5.0]
 
 ### Changed
