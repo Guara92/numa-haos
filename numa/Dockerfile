@@ -27,8 +27,8 @@ RUN apk add --no-cache \
 #   amd64   -> numa-linux-x86_64.tar.gz
 #
 # Each archive is a flat tarball containing a single "numa" binary.
-# hadolint ignore=DL3003,SC2155
 ARG NUMA_VERSION="v0.14.3"
+# hadolint ignore=SC2155
 RUN \
     if [[ "${BUILD_ARCH}" = "aarch64" ]]; then ARCH="aarch64"; \
     elif [[ "${BUILD_ARCH}" = "amd64" ]]; then ARCH="x86_64"; \
@@ -39,15 +39,15 @@ RUN \
     \
     && curl -fsSL \
     "https://github.com/razvandimescu/numa/releases/download/${NUMA_VERSION}/numa-linux-${ARCH}.tar.gz" \
-    -o /tmp/numa-linux-${ARCH}.tar.gz \
+    -o "/tmp/numa-linux-${ARCH}.tar.gz" \
     \
     && curl -fsSL \
     "https://github.com/razvandimescu/numa/releases/download/${NUMA_VERSION}/numa-linux-${ARCH}.tar.gz.sha256" \
-    -o /tmp/numa-linux-${ARCH}.tar.gz.sha256 \
+    -o "/tmp/numa-linux-${ARCH}.tar.gz.sha256" \
     \
-    && (cd /tmp && sha256sum -c "numa-linux-${ARCH}.tar.gz.sha256") \
+    && echo "$(awk '{print $1}' "/tmp/numa-linux-${ARCH}.tar.gz.sha256")  /tmp/numa-linux-${ARCH}.tar.gz" | sha256sum -c - \
     \
-    && tar -xzf /tmp/numa-linux-${ARCH}.tar.gz -C /tmp/ \
+    && tar -xzf "/tmp/numa-linux-${ARCH}.tar.gz" -C /tmp/ \
     \
     && mv /tmp/numa /usr/local/bin/numa \
     \
