@@ -39,9 +39,15 @@ RUN \
     \
     && curl -fsSL \
     "https://github.com/razvandimescu/numa/releases/download/${NUMA_VERSION}/numa-linux-${ARCH}.tar.gz" \
-    -o /tmp/numa.tar.gz \
+    -o /tmp/numa-linux-${ARCH}.tar.gz \
     \
-    && tar -xzf /tmp/numa.tar.gz -C /tmp/ \
+    && curl -fsSL \
+    "https://github.com/razvandimescu/numa/releases/download/${NUMA_VERSION}/numa-linux-${ARCH}.tar.gz.sha256" \
+    -o /tmp/numa-linux-${ARCH}.tar.gz.sha256 \
+    \
+    && (cd /tmp && sha256sum -c "numa-linux-${ARCH}.tar.gz.sha256") \
+    \
+    && tar -xzf /tmp/numa-linux-${ARCH}.tar.gz -C /tmp/ \
     \
     && mv /tmp/numa /usr/local/bin/numa \
     \
