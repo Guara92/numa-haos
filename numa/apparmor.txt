@@ -41,6 +41,7 @@ profile numa flags=(attach_disconnected,mediate_deleted) {
   # --- Persistent data volume (/data inside container) ---
   # Stores TLS CA material, self-signed certs, internal state
   /data/                         r,
+  /data/options.json             r,
   /data/numa/                    rw,
   /data/numa/**                  rw,
 
