@@ -2,9 +2,24 @@
 
 ## [0.6.0]
 
+### Added
+
+- Full configuration panel: all `numa.toml` fields are now exposed as add-on
+  options — upstream mode, hedging, ODoH, blocking, cache, proxy, DNS-over-TLS,
+  DNSSEC, LAN peer discovery, mobile onboarding, split-horizon forwarding rules,
+  and static DNS zones.
+- `init-numa` oneshot s6-overlay service: config generation and network readiness
+  check are now separated from the main Numa process, following s6 best practice.
+- DoT (port `853/tcp`) and mobile onboarding (port `8765/tcp`) advertised in the
+  add-on manifest so HA surfaces them in the Network tab.
+- `repository.json` added so the repo can be added as a custom HA add-on store.
+
 ### Changed
 
 - Bumped upstream Numa binary from **v0.14.3 → v0.15.1**.
+- `upstream_hedge_ms` default changed from `10` → `50` ms. At 10 ms hedging
+  fired on nearly every query (normal upstream latency 8–20 ms); 50 ms targets
+  only genuinely stalled responses and avoids doubling query counts routinely.
 
 ## [0.5.1]
 
@@ -17,6 +32,7 @@
 ### Changed
 
 - Bumped upstream Numa binary from **v0.14.2 → v0.14.3**.
+- Dockerfile SHA-256 integrity check added for the Numa binary tarball.
 
 ## [0.4.0]
 
