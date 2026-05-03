@@ -74,8 +74,9 @@ options:
     - "149.112.112.112"
   upstream_timeout_ms: 800
   # Request hedging: fire a parallel request after this many ms of silence.
-  # Set to 0 to disable. Double-counts quota'd providers (NextDNS, Control D).
-  upstream_hedge_ms: 10
+  # Disabled by default (0). Enable only with non-quota providers; enabling it
+  # doubles query counts for NextDNS, Control D, and similar.
+  upstream_hedge_ms: 0
 
   # --- [upstream] ODoH — only used when upstream_mode=odoh ---
   # upstream_odoh_relay: "https://odoh-relay.numa.rs/relay"
@@ -113,7 +114,7 @@ options:
   services: []
 
   # --- [dot] DNS-over-TLS ---
-  dot_enabled: true
+  dot_enabled: false
   dot_port: 853
   # dot_cert_path: ""   # omit to use Numa's auto-generated self-signed cert
   # dot_key_path: ""
@@ -128,7 +129,7 @@ options:
   lan_peer_timeout_secs: 90
 
   # --- [mobile] ---
-  mobile_enabled: true
+  mobile_enabled: false
   mobile_port: 8765
 
   # --- [[forwarding]] user-defined split-horizon rules ---

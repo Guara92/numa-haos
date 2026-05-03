@@ -53,7 +53,7 @@ else
     upstream_addresses=$(bashio::config 'upstream_addresses' '["https://9.9.9.9/dns-query","https://1.1.1.1/dns-query"]')
     upstream_fallback=$(bashio::config 'upstream_fallback' '["9.9.9.9","149.112.112.112"]')
     upstream_timeout_ms=$(bashio::config 'upstream_timeout_ms' '800')
-    upstream_hedge_ms=$(bashio::config 'upstream_hedge_ms' '10')
+    upstream_hedge_ms=$(bashio::config 'upstream_hedge_ms' '0')
 
     blocking_enabled=$(bashio::config 'blocking_enabled' 'true')
     blocking_refresh_hours=$(bashio::config 'blocking_refresh_hours' '6')
@@ -70,7 +70,7 @@ else
     proxy_tls_port=$(bashio::config 'proxy_tls_port' '443')
     proxy_tld=$(bashio::config 'proxy_tld' 'numa')
 
-    dot_enabled=$(bashio::config 'dot_enabled' 'true')
+    dot_enabled=$(bashio::config 'dot_enabled' 'false')
     dot_port=$(bashio::config 'dot_port' '853')
     dot_cert_path=$(bashio::config 'dot_cert_path' '')
     dot_key_path=$(bashio::config 'dot_key_path' '')
@@ -82,7 +82,7 @@ else
     lan_broadcast_interval_secs=$(bashio::config 'lan_broadcast_interval_secs' '30')
     lan_peer_timeout_secs=$(bashio::config 'lan_peer_timeout_secs' '90')
 
-    mobile_enabled=$(bashio::config 'mobile_enabled' 'true')
+    mobile_enabled=$(bashio::config 'mobile_enabled' 'false')
     mobile_port=$(bashio::config 'mobile_port' '8765')
 
     # Write to a temp file; atomic move at the end prevents a partial config.
