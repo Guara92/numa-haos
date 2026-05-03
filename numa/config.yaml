@@ -78,9 +78,9 @@ options:
     - "149.112.112.112"
   upstream_timeout_ms: 800
   # Request hedging: fire a parallel request after this many ms of silence.
-  # Disabled by default (0). Enable only with non-quota providers; enabling it
-  # doubles query counts for NextDNS, Control D, and similar.
-  upstream_hedge_ms: 0
+  # 50ms fires only on genuinely stalled responses (normal upstreams reply in
+  # 8-20ms). Set to 0 to disable. Avoid with quota providers (NextDNS, Control D).
+  upstream_hedge_ms: 50
 
   # --- [upstream] ODoH — only used when upstream_mode=odoh ---
   # upstream_odoh_relay: "https://odoh-relay.numa.rs/relay"

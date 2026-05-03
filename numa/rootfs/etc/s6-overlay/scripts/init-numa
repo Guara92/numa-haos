@@ -53,7 +53,7 @@ else
     upstream_addresses=$(bashio::config 'upstream_addresses' '["https://9.9.9.9/dns-query","https://1.1.1.1/dns-query"]')
     upstream_fallback=$(bashio::config 'upstream_fallback' '["9.9.9.9","149.112.112.112"]')
     upstream_timeout_ms=$(bashio::config 'upstream_timeout_ms' '800')
-    upstream_hedge_ms=$(bashio::config 'upstream_hedge_ms' '0')
+    upstream_hedge_ms=$(bashio::config 'upstream_hedge_ms' '50')
 
     blocking_enabled=$(bashio::config 'blocking_enabled' 'true')
     blocking_refresh_hours=$(bashio::config 'blocking_refresh_hours' '6')
