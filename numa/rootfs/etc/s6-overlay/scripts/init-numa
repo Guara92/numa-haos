@@ -70,7 +70,7 @@ else
     proxy_tls_port=$(bashio::config 'proxy_tls_port' '443')
     proxy_tld=$(bashio::config 'proxy_tld' 'numa')
 
-    dot_enabled=$(bashio::config 'dot_enabled' 'false')
+    dot_enabled=$(bashio::config 'dot_enabled' 'true')
     dot_port=$(bashio::config 'dot_port' '853')
     dot_cert_path=$(bashio::config 'dot_cert_path' '')
     dot_key_path=$(bashio::config 'dot_key_path' '')
@@ -82,7 +82,7 @@ else
     lan_broadcast_interval_secs=$(bashio::config 'lan_broadcast_interval_secs' '30')
     lan_peer_timeout_secs=$(bashio::config 'lan_peer_timeout_secs' '90')
 
-    mobile_enabled=$(bashio::config 'mobile_enabled' 'false')
+    mobile_enabled=$(bashio::config 'mobile_enabled' 'true')
     mobile_port=$(bashio::config 'mobile_port' '8765')
 
     # Write to a temp file; atomic move at the end prevents a partial config.

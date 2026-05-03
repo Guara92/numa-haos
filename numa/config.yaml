@@ -118,7 +118,7 @@ options:
   services: []
 
   # --- [dot] DNS-over-TLS ---
-  dot_enabled: false
+  dot_enabled: true
   dot_port: 853
   # dot_cert_path: ""   # omit to use Numa's auto-generated self-signed cert
   # dot_key_path: ""
@@ -133,7 +133,7 @@ options:
   lan_peer_timeout_secs: 90
 
   # --- [mobile] ---
-  mobile_enabled: false
+  mobile_enabled: true
   mobile_port: 8765
 
   # --- [[forwarding]] user-defined split-horizon rules ---
