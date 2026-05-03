@@ -6,8 +6,10 @@
 # and checks network readiness before Numa starts.
 # Called from /etc/s6-overlay/s6-rc.d/init-numa/up (execlineb single-line).
 #
-# JSON arrays returned by bashio::config are syntactically identical to TOML
-# string arrays, so they are written directly into the generated file.
+# Scalar fields are read via bashio::config.
+# Array fields are read via jq directly from /data/options.json — bashio::config
+# on an array key returns one item per line (for iteration), not a JSON array,
+# which is not valid TOML syntax.
 # ==============================================================================
 set -euo pipefail
 
@@ -50,20 +52,20 @@ else
     filter_aaaa=$(bashio::config 'filter_aaaa' 'false')
 
     upstream_mode=$(bashio::config 'upstream_mode' 'forward')
-    upstream_addresses=$(bashio::config 'upstream_addresses' '["https://9.9.9.9/dns-query","https://1.1.1.1/dns-query"]')
-    upstream_fallback=$(bashio::config 'upstream_fallback' '["9.9.9.9","149.112.112.112"]')
+    upstream_addresses=$(jq -c '.upstream_addresses // ["https://9.9.9.9/dns-query","https://1.1.1.1/dns-query"]' /data/options.json)
+    upstream_fallback=$(jq -c '.upstream_fallback // ["9.9.9.9","149.112.112.112"]' /data/options.json)
     upstream_timeout_ms=$(bashio::config 'upstream_timeout_ms' '800')
     upstream_hedge_ms=$(bashio::config 'upstream_hedge_ms' '50')
 
     blocking_enabled=$(bashio::config 'blocking_enabled' 'true')
     blocking_refresh_hours=$(bashio::config 'blocking_refresh_hours' '6')
-    blocking_lists=$(bashio::config 'blocking_lists' '["https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/hosts/pro.txt"]')
-    blocking_allowlist=$(bashio::config 'blocking_allowlist' '[]')
+    blocking_lists=$(jq -c '.blocking_lists // ["https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/hosts/pro.txt"]' /data/options.json)
+    blocking_allowlist=$(jq -c '.blocking_allowlist // []' /data/options.json)
 
     cache_max_entries=$(bashio::config 'cache_max_entries' '100000')
     cache_min_ttl=$(bashio::config 'cache_min_ttl' '60')
     cache_max_ttl=$(bashio::config 'cache_max_ttl' '86400')
-    cache_warm=$(bashio::config 'cache_warm' '["home-assistant.io","version.home-assistant.io","update.home-assistant.io","cdn.jsdelivr.net"]')
+    cache_warm=$(jq -c '.cache_warm // ["home-assistant.io","version.home-assistant.io","update.home-assistant.io","cdn.jsdelivr.net"]' /data/options.json)
 
     proxy_enabled=$(bashio::config 'proxy_enabled' 'false')
     proxy_port=$(bashio::config 'proxy_port' '80')
@@ -141,8 +143,8 @@ target     = "${odoh_target}"
 strict     = ${odoh_strict}
 fallback   = ${upstream_fallback}
 EOF
-        [ -n "${odoh_relay_ip}" ]  && printf 'relay_ip   = "%s"\n' "${odoh_relay_ip}"  >> "${NUMA_CONFIG_TMP}"
-        [ -n "${odoh_target_ip}" ] && printf 'target_ip  = "%s"\n' "${odoh_target_ip}" >> "${NUMA_CONFIG_TMP}"
+        [ -n "${odoh_relay_ip}" ]  && [ "${odoh_relay_ip}"  != "null" ] && printf 'relay_ip   = "%s"\n' "${odoh_relay_ip}"  >> "${NUMA_CONFIG_TMP}"
+        [ -n "${odoh_target_ip}" ] && [ "${odoh_target_ip}" != "null" ] && printf 'target_ip  = "%s"\n' "${odoh_target_ip}" >> "${NUMA_CONFIG_TMP}"
         ;;
     esac
 
@@ -158,7 +160,7 @@ suffix   = "local.hass.io"
 upstream = "172.30.32.3"
 EOF
 
-    forwarding_count=$(bashio::config 'forwarding_rules' '[]' | jq -r 'length')
+    forwarding_count=$(jq '.forwarding_rules | length' /data/options.json)
     for i in $(seq 0 $((forwarding_count - 1))); do
         fw_suffix=$(bashio::config "forwarding_rules[${i}].suffix")
         fw_upstream=$(bashio::config "forwarding_rules[${i}].upstream")
@@ -208,7 +210,7 @@ tls_port = ${proxy_tls_port}
 tld      = "${proxy_tld}"
 EOF
 
-    services_count=$(bashio::config 'services' '[]' | jq -r 'length')
+    services_count=$(jq '.services | length' /data/options.json)
     for i in $(seq 0 $((services_count - 1))); do
         svc_name=$(bashio::config "services[${i}].name")
         svc_port=$(bashio::config "services[${i}].target_port")
@@ -223,7 +225,7 @@ EOF
     # --------------------------------------------------------------------------
     # [[zones]]
     # --------------------------------------------------------------------------
-    zones_count=$(bashio::config 'zones' '[]' | jq -r 'length')
+    zones_count=$(jq '.zones | length' /data/options.json)
     for i in $(seq 0 $((zones_count - 1))); do
         zone_domain=$(bashio::config "zones[${i}].domain")
         zone_type=$(bashio::config "zones[${i}].record_type")
@@ -248,8 +250,8 @@ EOF
 enabled = ${dot_enabled}
 port    = ${dot_port}
 EOF
-    [ -n "${dot_cert_path}" ] && printf 'cert_path = "%s"\n' "${dot_cert_path}" >> "${NUMA_CONFIG_TMP}"
-    [ -n "${dot_key_path}" ]  && printf 'key_path  = "%s"\n' "${dot_key_path}"  >> "${NUMA_CONFIG_TMP}"
+    [ -n "${dot_cert_path}" ] && [ "${dot_cert_path}" != "null" ] && printf 'cert_path = "%s"\n' "${dot_cert_path}" >> "${NUMA_CONFIG_TMP}"
+    [ -n "${dot_key_path}" ]  && [ "${dot_key_path}"  != "null" ] && printf 'key_path  = "%s"\n' "${dot_key_path}"  >> "${NUMA_CONFIG_TMP}"
 
     # --------------------------------------------------------------------------
     # [dnssec]
