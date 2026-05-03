@@ -41,9 +41,13 @@ host_network: true
 ports:
   53/udp: 53
   53/tcp: 53
+  853/tcp: 853
+  8765/tcp: 8765
 ports_description:
   53/udp: DNS server (UDP)
   53/tcp: DNS server (TCP)
+  853/tcp: DNS-over-TLS (requires dot_enabled)
+  8765/tcp: Mobile onboarding API (requires mobile_enabled)
 map:
   - type: addon_config
     read_only: false
