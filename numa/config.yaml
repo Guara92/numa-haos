@@ -49,11 +49,148 @@ map:
     read_only: false
   - type: data
     read_only: false
+
 options:
+  # --- Add-on behaviour ---
   log_level: warning
+  # default: generate numa.toml from the options below on every boot.
+  # file:    use /config/numa.toml as-is; all options below are ignored.
   config_source: default
+
+  # --- [server] ---
+  # Set to true on IPv4-only networks to suppress AAAA/HTTPS hints.
+  filter_aaaa: false
+
+  # --- [upstream] ---
+  # forward: relay to upstream address(es).
+  # recursive: resolve from root nameservers (no address needed).
+  # odoh: Oblivious DoH — set upstream_odoh_* fields below.
+  upstream_mode: forward
+  upstream_addresses:
+    - "https://9.9.9.9/dns-query"
+    - "https://1.1.1.1/dns-query"
+  upstream_fallback:
+    - "9.9.9.9"
+    - "149.112.112.112"
+  upstream_timeout_ms: 800
+  # Request hedging: fire a parallel request after this many ms of silence.
+  # Set to 0 to disable. Double-counts quota'd providers (NextDNS, Control D).
+  upstream_hedge_ms: 10
+
+  # --- [upstream] ODoH — only used when upstream_mode=odoh ---
+  # upstream_odoh_relay: "https://odoh-relay.numa.rs/relay"
+  # upstream_odoh_target: "https://odoh.cloudflare-dns.com/dns-query"
+  # upstream_odoh_relay_ip: ""    # pin IP to avoid bootstrap DNS loop
+  # upstream_odoh_target_ip: ""
+  # upstream_odoh_strict: true    # false = fall back to plain DoH on relay failure
+
+  # --- [blocking] ---
+  blocking_enabled: true
+  blocking_refresh_hours: 6
+  blocking_lists:
+    - "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/hosts/pro.txt"
+  blocking_allowlist: []
+
+  # --- [cache] ---
+  cache_max_entries: 100000
+  cache_min_ttl: 60
+  cache_max_ttl: 86400
+  cache_warm:
+    - "home-assistant.io"
+    - "version.home-assistant.io"
+    - "update.home-assistant.io"
+    - "cdn.jsdelivr.net"
+
+  # --- [proxy] ---
+  # Reverse proxy for .numa local domains. Ports 80/443 conflict with HA on
+  # most setups — leave disabled unless you have remapped HA's HTTP ports.
+  proxy_enabled: false
+  proxy_port: 80
+  proxy_tls_port: 443
+  proxy_tld: "numa"
+
+  # --- [[services]] — proxy services (only used when proxy_enabled=true) ---
+  services: []
+
+  # --- [dot] DNS-over-TLS ---
+  dot_enabled: true
+  dot_port: 853
+  # dot_cert_path: ""   # omit to use Numa's auto-generated self-signed cert
+  # dot_key_path: ""
+
+  # --- [dnssec] — requires upstream_mode=recursive ---
+  dnssec_enabled: false
+  dnssec_strict: false
+
+  # --- [lan] mDNS peer discovery ---
+  lan_enabled: false
+  lan_broadcast_interval_secs: 30
+  lan_peer_timeout_secs: 90
+
+  # --- [mobile] ---
+  mobile_enabled: true
+  mobile_port: 8765
+
+  # --- [[forwarding]] user-defined split-horizon rules ---
+  # The local.hass.io → 172.30.32.3 rule is always injected automatically.
+  forwarding_rules: []
+
+  # --- [[zones]] static DNS overrides ---
+  zones: []
+
 schema:
-  log_level: list(trace|debug|info|notice|warning|error|fatal)?
-  config_source: list(default|file)?
+  log_level: list(trace|debug|info|notice|warning|error|fatal)
+  config_source: list(default|file)
+  filter_aaaa: bool
+  upstream_mode: list(forward|recursive|odoh)
+  upstream_addresses:
+    - str
+  upstream_fallback:
+    - str
+  upstream_timeout_ms: int
+  upstream_hedge_ms: int
+  upstream_odoh_relay: str?
+  upstream_odoh_target: str?
+  upstream_odoh_relay_ip: str?
+  upstream_odoh_target_ip: str?
+  upstream_odoh_strict: bool?
+  blocking_enabled: bool
+  blocking_refresh_hours: int
+  blocking_lists:
+    - str
+  blocking_allowlist:
+    - str
+  cache_max_entries: int
+  cache_min_ttl: int
+  cache_max_ttl: int
+  cache_warm:
+    - str
+  proxy_enabled: bool
+  proxy_port: int
+  proxy_tls_port: int
+  proxy_tld: str
+  services:
+    - name: str
+      target_port: int
+  dot_enabled: bool
+  dot_port: int
+  dot_cert_path: str?
+  dot_key_path: str?
+  dnssec_enabled: bool
+  dnssec_strict: bool
+  lan_enabled: bool
+  lan_broadcast_interval_secs: int
+  lan_peer_timeout_secs: int
+  mobile_enabled: bool
+  mobile_port: int
+  forwarding_rules:
+    - suffix: str
+      upstream: str
+  zones:
+    - domain: str
+      record_type: list(A|AAAA|CNAME|MX|TXT|PTR|NS|SRV|CAA|SVCB|HTTPS)
+      value: str
+      ttl: int
+
 backup_exclude:
   - data/

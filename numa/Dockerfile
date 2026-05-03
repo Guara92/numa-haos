@@ -61,6 +61,7 @@ RUN \
 COPY rootfs /
 
 RUN chmod a+x \
+    /etc/s6-overlay/scripts/init-numa \
     /etc/s6-overlay/s6-rc.d/numa/run \
     /etc/s6-overlay/scripts/init-nginx \
     /etc/s6-overlay/s6-rc.d/nginx/run \
