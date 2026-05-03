@@ -3,20 +3,173 @@ configuration:
   log_level:
     name: Log level
     description: >-
-      The log level controls the verbosity of the app. Possible values are
-      trace, debug, info, warning, error, and fatal.
-  dns_port:
-    name: DNS port
-    description: >-
-      The port Numa will listen on for DNS queries. Default is 53.
-  api_port:
-    name: Dashboard port
-    description: >-
-      The port Numa will use for its internal dashboard and API.
-      Default is 5380. This is also the port used for Ingress.
+      Controls the verbosity of the add-on logs. "warning" is recommended for
+      normal use; use "debug" or "trace" when troubleshooting.
   config_source:
     name: Configuration source
     description: >-
-      Choose how Numa is configured. Use "default" to generate a sample
-      numa.toml on first boot, or "file" to manage the file yourself
-      in the addon_config mapped directory.
+      "default" — all options below are applied and numa.toml is regenerated on
+      every boot. "file" — all options below are ignored and Numa reads
+      /config/numa.toml as-is. When set to "file" you must edit the file
+      manually using the Home Assistant File Editor add-on
+      (the file is at /addon_configs/numa/numa.toml).
+  filter_aaaa:
+    name: Filter AAAA records
+    description: >-
+      Answer AAAA queries with NODATA on IPv4-only networks so Happy Eyeballs
+      clients do not stall waiting for a v6 response that can never arrive.
+  upstream_mode:
+    name: Upstream mode
+    description: >-
+      "forward" relays queries to the configured upstream addresses.
+      "recursive" resolves directly from root nameservers with no upstream
+      dependency. "odoh" uses Oblivious DoH — configure the upstream_odoh_*
+      fields below and leave upstream_addresses empty.
+  upstream_addresses:
+    name: Upstream addresses
+    description: >-
+      DNS upstreams for forward mode. Supports plain UDP (9.9.9.9),
+      DNS-over-HTTPS (https://…), and DNS-over-TLS (tls://ip#hostname).
+      Multiple entries use SRTT-aware failover.
+  upstream_fallback:
+    name: Upstream fallback
+    description: >-
+      Plain UDP addresses tried only when all primary upstreams are unreachable
+      (e.g. no internet on first boot).
+  upstream_timeout_ms:
+    name: Upstream timeout (ms)
+    description: >-
+      Time to wait for an upstream response before marking it as slow and
+      routing around it.
+  upstream_hedge_ms:
+    name: Upstream hedge delay (ms)
+    description: >-
+      Fire a parallel request to the same upstream after this many milliseconds
+      of silence. Rescues UDP packet loss and transient stalls. Set to 0 to
+      disable. Avoid with quota-based providers (NextDNS, Control D).
+  upstream_odoh_relay:
+    name: ODoH relay URL
+    description: Only used when upstream mode is "odoh".
+  upstream_odoh_target:
+    name: ODoH target URL
+    description: Only used when upstream mode is "odoh".
+  upstream_odoh_relay_ip:
+    name: ODoH relay bootstrap IP
+    description: >-
+      Pin the relay's IP to avoid a circular DNS dependency at startup when
+      Numa is already the system resolver. Only used when mode is "odoh".
+  upstream_odoh_target_ip:
+    name: ODoH target bootstrap IP
+    description: >-
+      Pin the target's IP to avoid a circular DNS dependency at startup.
+      Only used when mode is "odoh".
+  upstream_odoh_strict:
+    name: ODoH strict mode
+    description: >-
+      When true (default), return SERVFAIL if the relay fails. When false,
+      fall back to plain DoH. Only used when mode is "odoh".
+  blocking_enabled:
+    name: Ad blocking enabled
+    description: Enable or disable DNS-based ad and tracker blocking.
+  blocking_refresh_hours:
+    name: Blocklist refresh interval (hours)
+    description: How often Numa re-downloads the blocklists.
+  blocking_lists:
+    name: Blocklists
+    description: >-
+      URLs of hosts-format blocklists to download. Supports https:// and
+      file:// URLs.
+  blocking_allowlist:
+    name: Allowlist
+    description: Domains that are never blocked regardless of the blocklists.
+  cache_max_entries:
+    name: Cache size (entries)
+    description: Maximum number of DNS records held in memory.
+  cache_min_ttl:
+    name: Cache minimum TTL (seconds)
+    description: Never serve a cached record with a TTL below this value.
+  cache_max_ttl:
+    name: Cache maximum TTL (seconds)
+    description: Cap TTL at this value so stale records do not linger.
+  cache_warm:
+    name: Cache warm-up domains
+    description: >-
+      Domains resolved at startup and refreshed before TTL expiry so the
+      first real request is always served from cache.
+  proxy_enabled:
+    name: Local proxy enabled
+    description: >-
+      Enable the .numa reverse proxy. Ports 80 and 443 conflict with Home
+      Assistant on most setups — leave disabled unless HA's HTTP ports have
+      been remapped.
+  proxy_port:
+    name: Proxy HTTP port
+    description: HTTP port for the .numa local proxy.
+  proxy_tls_port:
+    name: Proxy HTTPS port
+    description: HTTPS port for the .numa local proxy.
+  proxy_tld:
+    name: Proxy TLD
+    description: Local top-level domain used for .numa services (default "numa").
+  services:
+    name: Proxy services
+    description: >-
+      Services registered under the local proxy TLD. Each entry maps a name
+      to a local port (e.g. name "nas", port 8080 → nas.numa).
+  dot_enabled:
+    name: DNS-over-TLS enabled
+    description: >-
+      Accept encrypted DNS queries from LAN clients on the DoT port. Numa
+      auto-generates a self-signed CA on first boot; import /data/numa/ca.pem
+      on clients or use the mobile onboarding QR code.
+  dot_port:
+    name: DNS-over-TLS port
+    description: Port for the DNS-over-TLS listener (standard is 853).
+  dot_cert_path:
+    name: DoT certificate path
+    description: >-
+      Path to a PEM certificate for DoT. Leave empty to use Numa's
+      auto-generated self-signed certificate.
+  dot_key_path:
+    name: DoT private key path
+    description: >-
+      Path to the PEM private key matching the DoT certificate. Must be set
+      together with the certificate path.
+  dnssec_enabled:
+    name: DNSSEC validation enabled
+    description: >-
+      Enable Numa-side DNSSEC chain-of-trust validation. Requires
+      upstream mode "recursive". Not needed with Quad9 (validates upstream).
+  dnssec_strict:
+    name: DNSSEC strict mode
+    description: Return SERVFAIL for unsigned or bogus responses when enabled.
+  lan_enabled:
+    name: LAN peer discovery enabled
+    description: >-
+      Discover other Numa instances on the LAN via mDNS to share .numa
+      services automatically. Not needed for single-instance HA setups.
+  lan_broadcast_interval_secs:
+    name: LAN broadcast interval (seconds)
+    description: How often Numa announces itself to LAN peers.
+  lan_peer_timeout_secs:
+    name: LAN peer timeout (seconds)
+    description: Time before a silent LAN peer is considered gone.
+  mobile_enabled:
+    name: Mobile onboarding enabled
+    description: >-
+      Expose read-only HTTP endpoints (/health, /ca.pem, /mobileconfig) on
+      the LAN for iOS/Android companion setup. Safe for home networks.
+  mobile_port:
+    name: Mobile API port
+    description: Port for the mobile onboarding listener (default 8765).
+  forwarding_rules:
+    name: Split-horizon forwarding rules
+    description: >-
+      Route specific domain suffixes to a dedicated upstream. Useful for
+      internal domains (e.g. corp.example → internal DNS server). The
+      local.hass.io → 172.30.32.3 rule is always injected automatically.
+  zones:
+    name: Static DNS overrides
+    description: >-
+      Give any hostname a fixed DNS answer. Useful for labelling LAN devices
+      by IP or creating local split-horizon overrides.
