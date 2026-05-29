@@ -1,6 +1,6 @@
 ---
 name: Numa
-version: "0.10.0"
+version: "0.11.0"
 slug: numa
 description: Self-hosted DNS resolver with ad-blocking, local proxy, and dashboard
 url: https://github.com/Guara92/numa-haos
