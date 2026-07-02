@@ -2,9 +2,22 @@
 
 ## [0.12.0]
 
+### Added
+
+- Exposed Numa `v0.21.0` DNS rebinding protection in the Home Assistant options panel:
+  `rebind_protect`, `rebind_allowlist`, and `rebind_private_ranges`.
+- Exposed `allow_from` so users can restrict DNS, DoT/DoH, and `.numa` proxy access by client CIDR/IP.
+- Exposed `proxy_bind_addr` so users can consciously keep `.numa` loopback-only or expose it on the LAN.
+
+### Fixed
+
+- Persist dashboard-managed runtime state under `/config/.config/numa/` by setting `HOME=/config`
+  before launching Numa. This covers `services.json`, manual blocking allow/block lists, and the rebind allowlist.
+
 ### Changed
 
 - Bumped upstream Numa binary from **v0.20.0 → v0.21.0**.
+- Updated add-on documentation for Numa `v0.21.0` defaults, Ingress topology, health checks, and persistent state.
 
 ## [0.11.0]
 

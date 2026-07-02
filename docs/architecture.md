@@ -17,64 +17,56 @@ numa-haos/
 │   ├── installation.md          # End-user installation guide
 │   └── networking.md            # DNS / networking reference
 └── numa/
-    ├── config.yaml              # Supervisor app manifest
-    ├── Dockerfile               # Container image definition
-    ├── run.sh                   # App entrypoint (s6 / bashio)
-    ├── numa.toml.default        # Default config written on first boot
-    ├── README.md                # App-level README (shown in HA UI)
-    ├── DOCS.md                  # Full app documentation
+    ├── config.yaml              # Supervisor add-on manifest + options schema
+    ├── Dockerfile               # HA base image + downloaded upstream Numa binary
+    ├── README.md                # Add-on card README
+    ├── DOCS.md                  # Full add-on documentation
     ├── CHANGELOG.md             # Release history
     ├── apparmor.txt             # Custom AppArmor profile
-    ├── icon.png                 # App icon (shown in HA App Store)
-    ├── logo.png                 # App logo (shown on app page)
-    ├── translations/
-    │   └── en.yaml              # Human-readable labels for config options
-    └── rootfs/                  # Files copied verbatim into the container image
+    ├── icon.png / logo.png      # HA add-on store assets
+    └── rootfs/                  # Files copied into the container image
         └── etc/
-            └── numa/
-                └── numa.toml.default   # Default config (accessible at runtime)
+            ├── nginx/           # Ingress reverse-proxy config/templates
+            └── s6-overlay/      # init-numa, init-nginx, numa, nginx services
 ```
 
 ---
 
-## Container runtime model (Phase 1 / Phase 2)
+## Container runtime model
 
-The first version uses a **single-process layout**: the container starts Numa
-directly via `run.sh`, which is invoked by the Home Assistant Supervisor through
-the s6-overlay init system bundled in the base image.
+The add-on uses the `ghcr.io/hassio-addons/base` image and s6-overlay. Numa and
+nginx run as separate supervised services; nginx exists only to adapt Numa's
+loopback dashboard/API to Home Assistant Ingress.
 
 ```text
-┌─────────────────────────────────────────────────┐
-│  Home Assistant Supervisor                       │
-│                                                  │
-│  ┌───────────────────────────────────────────┐   │
-│  │  Numa App Container                        │   │
-│  │                                            │   │
-│  │  s6-overlay                                │   │
-│  │    └── run.sh (bashio entrypoint)          │   │
-│  │          └── /usr/local/bin/numa           │   │
-│  │                ├── DNS listener  :53       │   │
-│  │                └── Dashboard API :5380     │   │
-│  │                                            │   │
-│  │  Volumes:                                  │   │
-│  │    /config  ← addon_config (numa.toml)     │   │
-│  │    /data    ← addon data (TLS CA, state)   │   │
-│  └───────────────────────────────────────────┘   │
-│                                                  │
-│  Ingress proxy ──── :5380 (dashboard/API)        │
-│  Sidebar panel ─────────────────────────────►    │
-└─────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│  Home Assistant Supervisor                               │
+│                                                         │
+│  Sidebar / Open Web UI                                  │
+│          │                                              │
+│          ▼                                              │
+│  Supervisor Ingress ──► nginx :<ingress_port>           │
+│                              │                          │
+│                              ▼                          │
+│                       Numa API 127.0.0.1:5381           │
+│                                                         │
+│  LAN clients ─────────► Numa DNS :53 UDP/TCP            │
+│  LAN DoT clients ─────► Numa DoT :853                   │
+│  Mobile onboarding ───► Numa mobile API :8765           │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ### Key points
 
-- `host_network: true` is set in `config.yaml` so that Numa can bind to port
-  `53` directly on the host interface — required for LAN-wide DNS.
-- The dashboard on port `5380` is exposed through Home Assistant **Ingress**,
-  not as a public port. Users access it from the HA sidebar without opening
-  firewall rules.
-- `run.sh` checks for the existence of `/config/numa.toml` on startup and
-  writes the default config if it is absent (first-boot provisioning).
+- `host_network: true` is set in `config.yaml` so Numa can bind to port `53`
+  directly on the Home Assistant host interface.
+- Numa's main dashboard/API binds to `127.0.0.1:5381`; it is intentionally not
+  exposed directly on the LAN.
+- nginx listens on the Supervisor-assigned Ingress port and proxies to
+  `127.0.0.1:5381`, including dashboard asset/path rewrites needed by Ingress.
+- Docker `HEALTHCHECK` probes `http://127.0.0.1:5381/health`; the Supervisor HTTP
+  watchdog is intentionally omitted because it cannot reach loopback correctly in
+  this host-network topology.
 
 ---
 
@@ -83,13 +75,13 @@ the s6-overlay init system bundled in the base image.
 ```text
 ┌──────────────────────────────────────────┐
 │  Home Assistant App Options (config.yaml) │
-│  (log_level, dns_port, api_port, ...)     │
+│  (DNS, upstream, blocking, proxy, etc.)   │
 └──────────────────┬───────────────────────┘
-                   │ read by run.sh via bashio::config
+                   │ read by init-numa via bashio + jq
                    ▼
 ┌──────────────────────────────────────────┐
 │  /config/numa.toml                        │
-│  (full Numa configuration, TOML format)   │
+│  (generated unless config_source=file)     │
 │  Persisted via addon_config mapping       │
 └──────────────────┬───────────────────────┘
                    │ positional argument
@@ -97,27 +89,24 @@ the s6-overlay init system bundled in the base image.
              /usr/local/bin/numa
 ```
 
-The Home Assistant options (in `config.yaml`) control a small number of
-runtime knobs exposed through the Supervisor UI. The full Numa configuration
-lives in `numa.toml`, which is the source of truth for all DNS, proxy, cache,
-and blocking settings.
+By default, `init-numa` regenerates `/config/numa.toml` from the Home Assistant
+options on every start. This keeps the Supervisor UI as the source of truth for
+normal operation. Setting `config_source: file` switches to manual TOML mode and
+makes `/config/numa.toml` the source of truth.
 
-This two-level model is intentional:
-
-1. It avoids translating Numa's entire TOML schema into HA form fields (which
-   would be brittle and hard to maintain).
-2. It preserves Numa's native configuration model for users who want full
-   control.
-3. It keeps the Supervisor-facing options minimal and stable across Numa
-   version upgrades.
+Dashboard-managed runtime state is separate from `numa.toml`: services,
+manual blocklist/allowlist entries, and the rebind allowlist are persisted by
+Numa as JSON under `/config/.config/numa/`. The `numa` service exports
+`HOME=/config` before launch so upstream Numa's `config_dir()` resolves into the
+persistent `addon_config` mapping instead of container-local `/var/lib/numa`.
 
 ---
 
 ## Ingress / dashboard access
 
-Home Assistant Ingress proxies HTTP traffic from the sidebar panel to the
-app container on `ingress_port` (default `5380`). The Supervisor injects an
-`X-Ingress-Path` header so the app knows the base path prefix.
+Home Assistant Ingress proxies HTTP traffic from the sidebar panel to the add-on
+container on the Supervisor-assigned `ingress_port`. The bundled nginx server
+then proxies to Numa's loopback API on `127.0.0.1:5381`.
 
 ```text
 Browser
@@ -126,14 +115,17 @@ Browser
   ▼
 Home Assistant Supervisor Ingress Proxy
   │
-  │  http://127.0.0.1:5380/
+  │  http://<addon-ip>:<ingress_port>/
   ▼
-Numa Dashboard (API port inside container)
+nginx ingress server
+  │
+  │  http://127.0.0.1:5381/
+  ▼
+Numa Dashboard/API
 ```
 
-If Numa's dashboard does not handle the Ingress path prefix correctly, assets
-(JS/CSS) may fail to load. This is flagged as a **technical risk** and should
-be validated during the Phase 0 spike.
+nginx rewrites the dashboard's API base path and absolute `/fonts/...` asset
+URLs using the `X-Ingress-Path` header injected by Home Assistant.
 
 ---
 

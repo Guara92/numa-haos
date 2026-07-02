@@ -27,10 +27,13 @@ discovery, and a REST API with a web dashboard — all in a single ~8 MB binary.
 
 ## Configuration
 
-Numa is configured entirely through a single TOML file — `numa.toml`. On first
-boot the add-on writes a sensible default to the persistent config location.
-All subsequent restarts read that file directly; the add-on options panel in
-Home Assistant only controls a small number of operational settings.
+Numa reads a single TOML file — `/config/numa.toml`. By default, this add-on
+regenerates that file from the Home Assistant options panel on every start, so
+the panel remains the source of truth. Set `config_source: file` if you want to
+manage `/config/numa.toml` manually instead.
+
+Dashboard-managed runtime state is stored separately and persists across
+restarts, updates, and Home Assistant add-on backups under `/config/.config/numa/`.
 
 ### Persistent config path
 
@@ -68,8 +71,36 @@ backend reads directly.
 
 | Value | Behaviour |
 |---|---|
-| `default` | Write `numa.toml` from the embedded template on first boot *(default)* |
-| `file` | Expect an existing `numa.toml`; fail loudly if it is absent |
+| `default` | Regenerate `/config/numa.toml` from the add-on options on every start *(default)* |
+| `file` | Use an existing `/config/numa.toml`; fail loudly if it is absent |
+
+### `allow_from`
+
+Optional CIDR/IP allowlist applied by Numa at every client-facing DNS surface,
+including UDP/TCP DNS, DoT/DoH, and the `.numa` reverse proxy. Leave it empty to
+keep Numa's upstream default of accepting all peers. If you expose port `53` or
+`.numa` proxy ports beyond your trusted LAN, configure this.
+
+Example:
+
+```yaml
+allow_from:
+  - 192.168.0.0/16
+  - 10.0.0.0/8
+  - fd00::/8
+```
+
+### `rebind_protect`, `rebind_allowlist`, `rebind_private_ranges`
+
+`rebind_protect` enables Numa's opt-in DNS rebinding protection introduced in
+Numa `v0.21.0`. It strips private/special-use addresses from upstream answers so
+a public domain cannot point clients at your router, NAS, Home Assistant host,
+localhost, Tailscale/CGNAT ranges, ULA, or NAT64 addresses.
+
+The add-on keeps this **disabled by default** to avoid breaking legitimate
+split-horizon setups such as public hostnames that intentionally resolve to LAN
+addresses. If you enable it, use `rebind_allowlist` for those domains. Leave
+`rebind_private_ranges` empty unless you want to replace Numa's built-in ranges.
 
 ---
 
@@ -82,14 +113,18 @@ All sections and keys are optional unless marked **required**.
 | Key | Type | Default | Notes |
 |---|---|---|---|
 | `bind_addr` | string | `"0.0.0.0:53"` | DNS listener `address:port` |
-| `api_port` | integer | `5380` | HTTP dashboard/API port |
-| `api_bind_addr` | string | `"0.0.0.0"` | Required for HA Ingress to reach the dashboard |
-| `data_dir` | string | `/var/lib/numa` | TLS CA/cert storage; set to `"/data/numa"` in the add-on |
+| `api_port` | integer | `5380` upstream; `5381` in this add-on | HTTP dashboard/API port |
+| `api_bind_addr` | string | `"127.0.0.1"` | Main API stays loopback-only; bundled nginx handles HA Ingress |
+| `data_dir` | string | `/var/lib/numa` upstream; `/data/numa` in this add-on | TLS CA/cert storage |
 | `filter_aaaa` | bool | `false` | Answer AAAA queries with NODATA on IPv4-only networks |
+| `allow_from` | array | `[]` | Optional CIDR/IP client allowlist for DNS, DoT/DoH, and `.numa` proxy |
+| `rebind_protect` | bool | `false` | Strip private/special-use addresses from upstream answers |
+| `rebind_allowlist` | array | `[]` | Domains exempt from rebinding protection |
+| `rebind_private_ranges` | array | built-in ranges | Replacement CIDR set for rebinding protection |
 
-> The add-on default template sets `api_bind_addr = "0.0.0.0"` so the HA
-> Ingress proxy can reach the dashboard. Do not change this to `"127.0.0.1"` —
-> doing so will prevent the sidebar entry from opening.
+> In this add-on, `api_bind_addr = "127.0.0.1"` is intentional. Home Assistant
+> Ingress reaches Numa through the bundled nginx sidecar, so the unauthenticated
+> Numa management API is not exposed directly on the LAN.
 
 ### `[upstream]`
 
@@ -211,7 +246,8 @@ JSON. The dashboard itself is served at `GET /`.
 | `GET/DELETE` | `/cache` | Inspect or flush the DNS cache |
 | `GET/POST/DELETE` | `/overrides` | Temporary DNS overrides |
 | `GET` | `/diagnose/{domain}` | Step-by-step resolution trace |
-| `GET/PUT/POST` | `/blocking/*` | Toggle, pause, or inspect the blocklist |
+| `GET/PUT/POST` | `/blocking/*` | Toggle, pause, inspect allowlist, or manually block domains |
+| `GET/PUT/POST` | `/rebind/*` | Inspect/toggle rebinding protection and manage its allowlist |
 | `GET/POST/DELETE` | `/services` | Manage `.numa` proxy services |
 | `GET` | `/ca.pem` | Download the auto-generated CA certificate |
 
@@ -228,7 +264,7 @@ a real network-level DNS server.
 | Port | Protocol | Purpose |
 |---|---|---|
 | `53` | UDP + TCP | DNS queries from clients |
-| `5380` | TCP | Dashboard / REST API (Ingress only by default) |
+| `5381` | TCP | Internal dashboard / REST API behind bundled nginx Ingress proxy |
 | `853` | TCP | DNS-over-TLS (optional, if `[dot] enabled = true`) |
 | `80` / `443` | TCP | `.numa` proxy (optional, if `[proxy] enabled = true`) |
 
@@ -242,23 +278,27 @@ service before starting Numa.
 ### Ingress
 
 The Numa dashboard is accessed through Home Assistant **Ingress** (the sidebar
-entry) and does **not** require opening an additional firewall port under
-normal use. The `api_bind_addr = "0.0.0.0"` setting in `numa.toml` is
-required for the Ingress proxy to reach the dashboard.
+entry) and does **not** require opening an additional firewall port under normal
+use. The bundled nginx service listens on the Supervisor-assigned Ingress port
+and proxies to Numa's loopback-only API at `127.0.0.1:5381`.
 
 ---
 
 ## Health monitoring & watchdog
 
-Home Assistant monitors the add-on via the Numa health endpoint:
+The add-on intentionally does not configure the Home Assistant Supervisor HTTP
+watchdog. With `host_network: true`, Supervisor would probe the Docker gateway,
+while Numa's management API is intentionally bound to loopback only.
+
+Instead, the image uses Docker's `HEALTHCHECK` against:
 
 ```text
-GET http://<host>:5380/health
+GET http://127.0.0.1:5381/health
 ```
 
 The endpoint returns HTTP 200 with `{"status":"ok","version":"…","uptime_secs":N,…}`
-whenever Numa is running normally. If the endpoint stops responding, the
-Supervisor will automatically restart the add-on.
+whenever Numa is running normally. The Supervisor can still react to container
+state changes such as `UNHEALTHY`, `FAILED`, or `STOPPED`.
 
 ---
 
@@ -284,10 +324,12 @@ The resulting security score is **6/6**
 |---|---|---|
 | `/config/numa.toml` | `/addon_configs/<repo>_numa/numa.toml` | Main configuration |
 | `/data/numa/` | Add-on data directory | TLS CA, certs, internal state |
+| `/config/.config/numa/*.json` | `/addon_configs/<repo>_numa/.config/numa/*.json` | Dashboard-managed services, manual blocklist/allowlist, rebind allowlist |
 
-Configuration and TLS material survive add-on restarts and HA OS upgrades.
-The `/data/` directory is excluded from backups by default because it contains
-auto-generated TLS material that can be regenerated on first boot.
+Configuration and dashboard-managed runtime lists survive add-on restarts, HA OS
+upgrades, and add-on backups. TLS material lives under `/data/numa/`; the `/data/`
+directory is excluded from backups by default because it contains auto-generated
+TLS material that can be regenerated on first boot.
 
 ---
 

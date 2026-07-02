@@ -53,11 +53,13 @@ Full documentation is available in [DOCS.md][docs].
 
 ## Configuration
 
-The app exposes a minimal set of options. Numa's full configuration is managed
-via `numa.toml`, stored at `/addon_configs/numa/numa.toml` on your Home
-Assistant host.
+The app exposes the most common Numa settings in the Home Assistant options
+panel and regenerates `/config/numa.toml` from those options by default. Switch
+`config_source` to `file` if you prefer to manage the TOML file manually.
 
-On first start, a default `numa.toml` is written automatically if none exists.
+Dashboard-managed runtime state such as proxy services, manual blocklist entries,
+and the rebind allowlist is stored persistently under `/config/.config/numa/`,
+so it is included in add-on backups.
 
 See [DOCS.md][docs] for details on all configuration options.
 

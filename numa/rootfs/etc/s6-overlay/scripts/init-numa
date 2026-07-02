@@ -50,6 +50,10 @@ else
 
     # --- Read all config values ---
     filter_aaaa=$(bashio::config 'filter_aaaa' 'false')
+    allow_from=$(jq -c '.allow_from // []' /data/options.json)
+    rebind_protect=$(bashio::config 'rebind_protect' 'false')
+    rebind_allowlist=$(jq -c '.rebind_allowlist // []' /data/options.json)
+    rebind_private_ranges=$(jq -c '.rebind_private_ranges // []' /data/options.json)
 
     upstream_mode=$(bashio::config 'upstream_mode' 'forward')
     upstream_addresses=$(jq -c '.upstream_addresses // ["https://9.9.9.9/dns-query","https://1.1.1.1/dns-query"]' /data/options.json)
@@ -71,6 +75,7 @@ else
     proxy_port=$(bashio::config 'proxy_port' '80')
     proxy_tls_port=$(bashio::config 'proxy_tls_port' '443')
     proxy_tld=$(bashio::config 'proxy_tld' 'numa')
+    proxy_bind_addr=$(bashio::config 'proxy_bind_addr' '127.0.0.1')
 
     dot_enabled=$(bashio::config 'dot_enabled' 'true')
     dot_port=$(bashio::config 'dot_port' '853')
@@ -104,6 +109,13 @@ api_port      = 5381
 api_bind_addr = "127.0.0.1"
 data_dir      = "/data/numa"
 filter_aaaa   = ${filter_aaaa}
+allow_from    = ${allow_from}
+
+# DNS rebinding protection is opt-in; local zones, overrides and .numa answers
+# are exempt upstream. Empty private ranges use Numa's built-in defaults.
+rebind_protect        = ${rebind_protect}
+rebind_allowlist      = ${rebind_allowlist}
+rebind_private_ranges = ${rebind_private_ranges}
 EOF
 
     # --------------------------------------------------------------------------
@@ -204,10 +216,11 @@ EOF
     cat >> "${NUMA_CONFIG_TMP}" << EOF
 
 [proxy]
-enabled  = ${proxy_enabled}
-port     = ${proxy_port}
-tls_port = ${proxy_tls_port}
-tld      = "${proxy_tld}"
+enabled   = ${proxy_enabled}
+port      = ${proxy_port}
+tls_port  = ${proxy_tls_port}
+tld       = "${proxy_tld}"
+bind_addr = "${proxy_bind_addr}"
 EOF
 
     services_count=$(jq '.services | length' /data/options.json)

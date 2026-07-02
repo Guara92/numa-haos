@@ -54,21 +54,23 @@ Once the app is running, you have two ways to access the Numa dashboard:
 
 ---
 
-## First-run configuration
+## Configuration model
 
-On first boot, Numa writes a default `numa.toml` to the persistent config
-directory:
+By default, the add-on regenerates `/config/numa.toml` from the Home Assistant
+Configuration tab every time it starts. Use the options panel for normal changes.
+
+If you need full manual control, set `config_source` to `file` and create/edit:
 
 ```text
 /addon_configs/<slug>/numa.toml
 ```
 
-You can edit this file:
-
-- via the **File Editor** or **SSH & Terminal** add-ons, or
-- via the built-in minimal TOML editor served through Ingress (coming soon).
-
+You can edit this file via the **File Editor** or **SSH & Terminal** add-ons.
 After editing `numa.toml`, restart the Numa add-on for changes to take effect.
+
+Dashboard-managed runtime state, such as proxy services, manual blocklist entries,
+and the DNS rebinding allowlist, persists under `/config/.config/numa/` so it is
+included in add-on backups.
 
 ---
 
@@ -89,7 +91,7 @@ When a new version is released:
 
 1. Go to the Numa add-on page in Home Assistant.
 2. Click **Update**.
-3. Your `numa.toml` configuration is preserved across updates.
+3. Your add-on options, `/config/numa.toml`, and dashboard-managed runtime state are preserved across updates.
 
 ---
 

@@ -35,12 +35,17 @@ profile numa flags=(attach_disconnected,mediate_deleted) {
   /usr/local/bin/numa            mrix,
 
   # --- Configuration (addon_config mapping → /config inside container) ---
-  /config/                       r,
+  # Also stores dashboard-managed runtime state under /config/.config/numa/
+  # because upstream Numa resolves config_dir() from HOME.
+  /config/                       rw,
   /config/numa.toml              rw,
+  /config/.config/               rw,
+  /config/.config/numa/          rw,
+  /config/.config/numa/**        rw,
 
   # --- Persistent data volume (/data inside container) ---
-  # Stores TLS CA material, self-signed certs, internal state
-  /data/                         r,
+  # Stores TLS CA material, self-signed certs, and other regenerable internal state
+  /data/                         rw,
   /data/options.json             r,
   /data/numa/                    rw,
   /data/numa/**                  rw,
