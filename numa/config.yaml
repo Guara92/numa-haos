@@ -1,6 +1,6 @@
 ---
 name: Numa
-version: "0.11.0"
+version: "0.12.0"
 slug: numa
 description: Self-hosted DNS resolver with ad-blocking, local proxy, and dashboard
 url: https://github.com/Guara92/numa-haos
@@ -64,6 +64,15 @@ options:
   # --- [server] ---
   # Set to true on IPv4-only networks to suppress AAAA/HTTPS hints.
   filter_aaaa: false
+  # Optional CIDR/IP client allowlist applied to DNS, DoT/DoH, and the .numa proxy.
+  # Empty keeps Numa's upstream default: allow all peers.
+  allow_from: []
+  # DNS rebinding protection is opt-in upstream. Keep it disabled by default to
+  # avoid breaking split-horizon domains that legitimately resolve to LAN IPs.
+  rebind_protect: false
+  rebind_allowlist: []
+  # Empty uses Numa's built-in private/special-use ranges.
+  rebind_private_ranges: []
 
   # --- [upstream] ---
   # forward: relay to upstream address(es).
@@ -113,6 +122,9 @@ options:
   proxy_port: 80
   proxy_tls_port: 443
   proxy_tld: "numa"
+  # Upstream default is loopback-only. Set 0.0.0.0 only when you intentionally
+  # expose the .numa proxy on your LAN and have handled port 80/443 conflicts.
+  proxy_bind_addr: "127.0.0.1"
 
   # --- [[services]] — proxy services (only used when proxy_enabled=true) ---
   services: []
@@ -147,6 +159,13 @@ schema:
   log_level: list(trace|debug|info|notice|warning|error|fatal)
   config_source: list(default|file)
   filter_aaaa: bool
+  allow_from:
+    - str
+  rebind_protect: bool
+  rebind_allowlist:
+    - str
+  rebind_private_ranges:
+    - str
   upstream_mode: list(forward|recursive|odoh)
   upstream_addresses:
     - str
@@ -174,6 +193,7 @@ schema:
   proxy_port: int
   proxy_tls_port: int
   proxy_tld: str
+  proxy_bind_addr: str
   services:
     - name: str
       target_port: int

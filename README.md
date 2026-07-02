@@ -31,9 +31,10 @@ Numa directly from the Home Assistant Supervisor, with:
 - **DoT listener enabled** — clients on your LAN can use port 853 for
   encrypted DNS-over-TLS queries without reconfiguring existing plain-UDP
   clients.
-- **Persistent configuration** — your `numa.toml` survives restarts and updates.
-- **Minimal config workflow** — edit `numa.toml` from within Home Assistant,
-  no SSH required.
+- **Persistent configuration** — add-on options, `numa.toml`, TLS material, and
+  dashboard-managed runtime state survive restarts and updates.
+- **Home Assistant settings panel** — common DNS, blocking, cache, proxy,
+  DNSSEC, mobile, and rebinding-protection options are exposed in the UI.
 
 ## Installation
 
@@ -86,5 +87,5 @@ See [LICENSE](LICENSE) for the full text.
 [license-shield]: https://img.shields.io/github/license/Guara92/numa-haos.svg
 [hagezi]: https://github.com/hagezi/dns-blocklists
 [numa]: https://github.com/razvandimescu/numa
-[numa-version-shield]: https://img.shields.io/badge/version-0.3.0-blue.svg
+[numa-version-shield]: https://img.shields.io/badge/version-0.12.0-blue.svg
 [project-stage-shield]: https://img.shields.io/badge/project%20stage-experimental-yellow.svg

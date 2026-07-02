@@ -27,7 +27,7 @@ RUN apk add --no-cache \
 #   amd64   -> numa-linux-x86_64.tar.gz
 #
 # Each archive is a flat tarball containing a single "numa" binary.
-ARG NUMA_VERSION="v0.20.0"
+ARG NUMA_VERSION="v0.21.0"
 # hadolint ignore=SC2155
 RUN \
     if [[ "${BUILD_ARCH}" = "aarch64" ]]; then ARCH="aarch64"; \

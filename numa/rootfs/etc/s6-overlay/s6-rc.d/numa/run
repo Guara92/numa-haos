@@ -5,5 +5,14 @@
 # Runs the Numa DNS resolver.
 # RUST_LOG and config are prepared by init-numa before this service starts.
 # ==============================================================================
+# Upstream Numa persists dashboard-managed runtime state (services.json,
+# blocking-block.json, blocking-allow.json, rebind-allow.json) under
+# config_dir(), which on Unix follows HOME for non-root-looking homes. The
+# add-on runs as root, so set HOME into the persistent addon_config mapping;
+# otherwise that state would fall back to /var/lib/numa inside the container
+# image and would not be included in Home Assistant backups.
+export HOME=/config
+mkdir -p "${HOME}/.config/numa"
+
 bashio::log.info "Launching Numa..."
 exec /usr/local/bin/numa /config/numa.toml
