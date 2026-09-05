@@ -1,6 +1,6 @@
 ---
 name: Numa
-version: "0.12.0"
+version: "0.13.0"
 slug: numa
 description: Self-hosted DNS resolver with ad-blocking, local proxy, and dashboard
 url: https://github.com/Guara92/numa-haos
@@ -100,9 +100,11 @@ options:
 
   # --- [blocking] ---
   blocking_enabled: true
+  # Must be >= 1: Numa v0.23.0 rejects 0 at config parse time.
   blocking_refresh_hours: 6
+  # HaGeZi retired the hosts/ and domains/ formats on 2026-08-01; those URLs 403.
   blocking_lists:
-    - "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/hosts/pro.txt"
+    - "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/pro-onlydomains.txt"
   blocking_allowlist: []
 
   # --- [cache] ---
@@ -179,7 +181,7 @@ schema:
   upstream_odoh_target_ip: str?
   upstream_odoh_strict: bool?
   blocking_enabled: bool
-  blocking_refresh_hours: int
+  blocking_refresh_hours: int(1,)
   blocking_lists:
     - str
   blocking_allowlist:

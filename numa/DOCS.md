@@ -118,13 +118,18 @@ All sections and keys are optional unless marked **required**.
 | `data_dir` | string | `/var/lib/numa` upstream; `/data/numa` in this add-on | TLS CA/cert storage |
 | `filter_aaaa` | bool | `false` | Answer AAAA queries with NODATA on IPv4-only networks |
 | `allow_from` | array | `[]` | Optional CIDR/IP client allowlist for DNS, DoT/DoH, and `.numa` proxy |
+| `api_token` | string | minted on first start | Shared secret for the dashboard/API; loopback peers are always exempt |
 | `rebind_protect` | bool | `false` | Strip private/special-use addresses from upstream answers |
 | `rebind_allowlist` | array | `[]` | Domains exempt from rebinding protection |
 | `rebind_private_ranges` | array | built-in ranges | Replacement CIDR set for rebinding protection |
 
 > In this add-on, `api_bind_addr = "127.0.0.1"` is intentional. Home Assistant
-> Ingress reaches Numa through the bundled nginx sidecar, so the unauthenticated
-> Numa management API is not exposed directly on the LAN.
+> Ingress reaches Numa through the bundled nginx sidecar, so the Numa management
+> API is never exposed directly on the LAN.
+>
+> Numa v0.22.0 added token auth for non-loopback API clients. nginx connects from
+> `127.0.0.1`, which is exempt, so Ingress needs no credentials and `api_token`
+> can stay unset. Numa still mints one and logs it at `info`.
 
 ### `[upstream]`
 
@@ -133,8 +138,8 @@ All sections and keys are optional unless marked **required**.
 | `mode` | string | `"forward"` | `"forward"`, `"recursive"`, or `"auto"` |
 | `address` | string \| array | — | Upstream DNS. Supports plain UDP (`9.9.9.9`), DoH (`https://…`), DoT (`tls://IP#hostname`) |
 | `fallback` | array | — | Tried only when all primaries fail |
-| `timeout_ms` | integer | `3000` | Per-query timeout |
-| `hedge_ms` | integer | `10` | Parallel rescue delay; `0` disables hedging |
+| `timeout_ms` | integer | `5000` upstream; `800` in this add-on | Per-query timeout |
+| `hedge_ms` | integer | `0` upstream; `50` in this add-on | Parallel rescue delay; `0` disables hedging |
 
 ### `[[forwarding]]` *(repeatable)*
 
@@ -151,9 +156,13 @@ upstream = "192.168.1.1"
 | Key | Type | Default | Notes |
 |---|---|---|---|
 | `enabled` | bool | `true` | Enable ad blocking |
-| `refresh_hours` | integer | `24` | Blocklist refresh interval |
-| `lists` | array | Hagezi Pro URL | URLs of hosts-format blocklists |
+| `refresh_hours` | integer | `24` upstream; `6` in this add-on | Blocklist refresh interval. **Must be >= 1** — Numa v0.23.0 refuses to start on `0` |
+| `lists` | array | Hagezi Pro *wildcard* URL | Blocklist URLs or local file paths |
 | `allowlist` | array | `[]` | Domains that are never blocked |
+
+> **HaGeZi dropped the `hosts/` and `domains/` formats on 2026-08-01** — those URLs
+> now serve an error page. If `blocking_lists` still pins one, switch it to the
+> matching `wildcard/` URL or blocking stays empty.
 
 ### `[cache]`
 
@@ -240,7 +249,7 @@ JSON. The dashboard itself is served at `GET /`.
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/health` | Health check — always returns `{"status":"ok",…}` |
+| `GET` | `/health` | Health check — always returns `{"status":"ok",…}`; exempt from API authentication |
 | `GET` | `/stats` | Full statistics object |
 | `GET` | `/query-log` | Recent DNS query log |
 | `GET/DELETE` | `/cache` | Inspect or flush the DNS cache |
@@ -281,6 +290,10 @@ The Numa dashboard is accessed through Home Assistant **Ingress** (the sidebar
 entry) and does **not** require opening an additional firewall port under normal
 use. The bundled nginx service listens on the Supervisor-assigned Ingress port
 and proxies to Numa's loopback-only API at `127.0.0.1:5381`.
+
+The dashboard is built for a site root, so nginx rewrites its absolute references
+into the Ingress prefix (`X-Ingress-Path`): the `API` constant, `/fonts/`, and
+`/locales/*.json`.
 
 ---
 
@@ -323,7 +336,8 @@ The resulting security score is **6/6**
 | Container path | Host path (approximate) | Contents |
 |---|---|---|
 | `/config/numa.toml` | `/addon_configs/<repo>_numa/numa.toml` | Main configuration |
-| `/data/numa/` | Add-on data directory | TLS CA, certs, internal state |
+| `/data/numa/` | Add-on data directory | TLS CA, certs, `api_token`, internal state |
+| `/data/numa/blocklists/` | Add-on data directory | Last-known-good copy of each remote blocklist (v0.23.0+) |
 | `/config/.config/numa/*.json` | `/addon_configs/<repo>_numa/.config/numa/*.json` | Dashboard-managed services, manual blocklist/allowlist, rebind allowlist |
 
 Configuration and dashboard-managed runtime lists survive add-on restarts, HA OS

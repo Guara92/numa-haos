@@ -27,11 +27,11 @@ RUN apk add --no-cache \
 #   amd64   -> numa-linux-x86_64.tar.gz
 #
 # Each archive is a flat tarball containing a single "numa" binary.
-ARG NUMA_VERSION="v0.21.0"
+ARG NUMA_VERSION="v0.23.0"
 # hadolint ignore=SC2155
 RUN \
-    if [[ "${BUILD_ARCH}" = "aarch64" ]]; then ARCH="aarch64"; \
-    elif [[ "${BUILD_ARCH}" = "amd64" ]]; then ARCH="x86_64"; \
+    if [ "${BUILD_ARCH}" = "aarch64" ]; then ARCH="aarch64"; \
+    elif [ "${BUILD_ARCH}" = "amd64" ]; then ARCH="x86_64"; \
     else echo "Unsupported arch: ${BUILD_ARCH}" && exit 1; \
     fi \
     \
@@ -74,7 +74,7 @@ HEALTHCHECK \
     --interval=30s \
     --timeout=10s \
     --start-period=20s \
-    CMD curl --fail http://127.0.0.1:5381/health || exit 1
+    CMD ["/bin/sh", "-c", "curl --fail http://127.0.0.1:5381/health || exit 1"]
 
 # Build arguments (injected by the HA build system / CI)
 ARG BUILD_DATE
