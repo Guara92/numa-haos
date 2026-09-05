@@ -2,6 +2,24 @@
 
 ## [0.13.0]
 
+### Fixed
+
+- Ad blocking was silently inactive: the default list pinned HaGeZi's `hosts/pro.txt`,
+  a format discontinued on 2026-08-01 that now returns an error page. Switched to
+  `wildcard/pro-onlydomains.txt`. **Existing installs keep their saved options** —
+  replace any `hosts/` or `domains/` entry in `blocking_lists` yourself.
+- Ingress dashboard showed raw i18n keys: Numa v0.23.0 fetches `/locales/*.json`
+  from an absolute path that bypasses the `API` prefix, so the requests hit Home
+  Assistant and 404'd. nginx now rewrites them like the existing `/fonts/` rules.
+- Constrained `blocking_refresh_hours` to `int(1,)`; v0.23.0 rejects `0` at config
+  parse time, so the old schema let a valid UI value stop Numa from starting.
+
+### Security
+
+- nginx clears any client-supplied `X-Numa-Client-Ip` before proxying. Numa v0.22.0
+  reads that header to identify the peer when the connection is loopback, so an
+  incoming copy would have made it treat Ingress requests as remote and reply 401.
+
 ### Changed
 
 - Bumped upstream Numa binary from **v0.21.0 → v0.23.0**.

@@ -63,7 +63,8 @@ else
 
     blocking_enabled=$(bashio::config 'blocking_enabled' 'true')
     blocking_refresh_hours=$(bashio::config 'blocking_refresh_hours' '6')
-    blocking_lists=$(jq -c '.blocking_lists // ["https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/hosts/pro.txt"]' /data/options.json)
+    # Keep in sync with the blocking_lists default in config.yaml.
+    blocking_lists=$(jq -c '.blocking_lists // ["https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/pro-onlydomains.txt"]' /data/options.json)
     blocking_allowlist=$(jq -c '.blocking_allowlist // []' /data/options.json)
 
     cache_max_entries=$(bashio::config 'cache_max_entries' '100000')

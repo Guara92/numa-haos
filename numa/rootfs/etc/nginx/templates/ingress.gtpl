@@ -21,6 +21,10 @@ server {
         # available as $http_x_ingress_path which we embed into the HTML.
         sub_filter "const API = '';" "const API = '$http_x_ingress_path';";
 
+        # The v0.23.0 locale fetches use an absolute path instead of the API
+        # const above; unpatched they 404 and the dashboard shows raw i18n keys.
+        sub_filter "fetch('/locales/" "fetch('$http_x_ingress_path/locales/";
+
         # Patch absolute /fonts/ references so they are resolved through the
         # ingress prefix rather than the HA root.
         #
