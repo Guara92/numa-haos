@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.14.0]
+
+### Changed
+
+- Bumped upstream Numa binary from **v0.23.0 → v0.23.1**.
+
 ## [0.13.0]
 
 ### Fixed
