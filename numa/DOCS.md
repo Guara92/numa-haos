@@ -102,6 +102,19 @@ split-horizon setups such as public hostnames that intentionally resolve to LAN
 addresses. If you enable it, use `rebind_allowlist` for those domains. Leave
 `rebind_private_ranges` empty unless you want to replace Numa's built-in ranges.
 
+### `max_concurrent_resolutions`
+
+Ceiling on cache-miss resolutions running at once, shared across UDP, TCP, DoT
+and DoH. Cached, local and coalesced answers are never counted, so it only
+bounds what a flood of novel names can conjure. Over the cap, UDP is dropped
+silently and stream transports return `SERVFAIL`. Default `512`, added in Numa
+`v0.23.1`.
+
+The schema enforces `>= 1`: Numa rejects `0` at config parse time. Unlike every
+comparable resolver (unbound, dnsdist, nginx), `0` here would refuse every cache
+miss rather than mean "unlimited". If you run Numa for many clients, watch
+`queries.refused` and `resolutions` in `/stats` after changing it.
+
 ---
 
 ## `numa.toml` reference
@@ -118,18 +131,23 @@ All sections and keys are optional unless marked **required**.
 | `data_dir` | string | `/var/lib/numa` upstream; `/data/numa` in this add-on | TLS CA/cert storage |
 | `filter_aaaa` | bool | `false` | Answer AAAA queries with NODATA on IPv4-only networks |
 | `allow_from` | array | `[]` | Optional CIDR/IP client allowlist for DNS, DoT/DoH, and `.numa` proxy |
-| `api_token` | string | minted on first start | Shared secret for the dashboard/API; loopback peers are always exempt |
+| `api_token` | string | minted on first start | Shared secret for the dashboard/API; loopback peers are exempt only when `Host` is local (`localhost`, an IP literal, or a `*.numa` name) |
 | `rebind_protect` | bool | `false` | Strip private/special-use addresses from upstream answers |
 | `rebind_allowlist` | array | `[]` | Domains exempt from rebinding protection |
 | `rebind_private_ranges` | array | built-in ranges | Replacement CIDR set for rebinding protection |
+| `max_concurrent_resolutions` | integer | `512` | Cap on concurrent cache-miss resolutions across UDP/TCP/DoT/DoH. **Must be >= 1** — Numa v0.23.1 refuses to start on `0` |
 
 > In this add-on, `api_bind_addr = "127.0.0.1"` is intentional. Home Assistant
 > Ingress reaches Numa through the bundled nginx sidecar, so the Numa management
 > API is never exposed directly on the LAN.
 >
-> Numa v0.22.0 added token auth for non-loopback API clients. nginx connects from
-> `127.0.0.1`, which is exempt, so Ingress needs no credentials and `api_token`
-> can stay unset. Numa still mints one and logs it at `info`.
+> Numa v0.22.0 added token auth for non-loopback API clients; v0.24.0 tightened
+> the loopback exemption so it only applies when the request's `Host` names this
+> host (`localhost`, a `*.localhost` name, an IP literal, or a `*.numa` name).
+> Home Assistant Ingress sends the HA hostname as `Host`, so nginx rewrites it to
+> `localhost` before proxying to `127.0.0.1:5381`. Ingress stays credential-free
+> and `api_token` can stay unset. Numa still mints a token and logs it at `info`;
+> `numa token` prints the token in effect if you ever need it.
 
 ### `[upstream]`
 

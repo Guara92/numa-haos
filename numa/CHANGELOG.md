@@ -2,6 +2,19 @@
 
 ## [0.14.0]
 
+### Security
+
+- Ingress dashboard would have returned `401` after the Numa v0.24.0 loopback
+  auth change: the exemption now requires the request `Host` to name this host,
+  but nginx forwarded the Home Assistant hostname. nginx now rewrites `Host` to
+  `localhost` when proxying to the loopback API.
+
+### Added
+
+- Exposed `max_concurrent_resolutions` in the options panel: caps concurrent
+  cache-miss resolutions across UDP, TCP, DoT and DoH. New in Numa v0.23.1;
+  `0` is rejected at config parse time, so the schema requires `>= 1`.
+
 ### Changed
 
 - Bumped upstream Numa binary from **v0.23.0 → v0.24.1**.
