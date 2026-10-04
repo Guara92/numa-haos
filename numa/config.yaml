@@ -1,6 +1,6 @@
 ---
 name: Numa
-version: "0.13.0"
+version: "0.14.0"
 slug: numa
 description: Self-hosted DNS resolver with ad-blocking, local proxy, and dashboard
 url: https://github.com/Guara92/numa-haos
@@ -73,6 +73,11 @@ options:
   rebind_allowlist: []
   # Empty uses Numa's built-in private/special-use ranges.
   rebind_private_ranges: []
+  # Cap on cache-miss resolutions running at once, shared by UDP, TCP, DoT and
+  # DoH. Cached, local and coalesced answers are never counted. Numa v0.23.1
+  # added this; it rejects 0 at parse time (0 is not "unlimited"). Raise only if
+  # you serve many clients and see queries.refused climb in /stats.
+  max_concurrent_resolutions: 512
 
   # --- [upstream] ---
   # forward: relay to upstream address(es).
@@ -168,6 +173,7 @@ schema:
     - str
   rebind_private_ranges:
     - str
+  max_concurrent_resolutions: int(1,)
   upstream_mode: list(forward|recursive|odoh)
   upstream_addresses:
     - str

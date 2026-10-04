@@ -54,6 +54,7 @@ else
     rebind_protect=$(bashio::config 'rebind_protect' 'false')
     rebind_allowlist=$(jq -c '.rebind_allowlist // []' /data/options.json)
     rebind_private_ranges=$(jq -c '.rebind_private_ranges // []' /data/options.json)
+    max_concurrent_resolutions=$(bashio::config 'max_concurrent_resolutions' '512')
 
     upstream_mode=$(bashio::config 'upstream_mode' 'forward')
     upstream_addresses=$(jq -c '.upstream_addresses // ["https://9.9.9.9/dns-query","https://1.1.1.1/dns-query"]' /data/options.json)
@@ -111,6 +112,7 @@ api_bind_addr = "127.0.0.1"
 data_dir      = "/data/numa"
 filter_aaaa   = ${filter_aaaa}
 allow_from    = ${allow_from}
+max_concurrent_resolutions = ${max_concurrent_resolutions}
 
 # DNS rebinding protection is opt-in; local zones, overrides and .numa answers
 # are exempt upstream. Empty private ranges use Numa's built-in defaults.

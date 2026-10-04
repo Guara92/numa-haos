@@ -64,6 +64,8 @@ loopback dashboard/API to Home Assistant Ingress.
   exposed directly on the LAN.
 - nginx listens on the Supervisor-assigned Ingress port and proxies to
   `127.0.0.1:5381`, including dashboard asset/path rewrites needed by Ingress.
+  It rewrites `Host` to `localhost`: Numa v0.24.0 only exempts loopback API
+  requests when `Host` names this host, and Ingress sends the HA hostname.
 - Docker `HEALTHCHECK` probes `http://127.0.0.1:5381/health`; the Supervisor HTTP
   watchdog is intentionally omitted because it cannot reach loopback correctly in
   this host-network topology.
@@ -125,7 +127,9 @@ Numa Dashboard/API
 ```
 
 nginx rewrites the dashboard's API base path and absolute `/fonts/...` asset
-URLs using the `X-Ingress-Path` header injected by Home Assistant.
+URLs using the `X-Ingress-Path` header injected by Home Assistant. It also
+rewrites `Host` to `localhost` and clears any client-supplied
+`X-Numa-Client-Ip`, so Numa treats every Ingress request as a local peer.
 
 ---
 
