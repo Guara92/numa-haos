@@ -36,6 +36,13 @@ server {
         sub_filter "href='/fonts/"  "href='$http_x_ingress_path/fonts/";
         sub_filter 'url(/fonts/'    'url($http_x_ingress_path/fonts/';
 
+        # Numa v0.24.0 shows a "this host's DNS points at ..., not this Numa
+        # instance" advisory when the container's /etc/resolv.conf does not point
+        # at Numa. Here it points at the Supervisor's DNS by design, so the
+        # advisory is always a false positive. Hide it; the dashboard poller
+        # keeps running without errors.
+        sub_filter '</head>' '<style>#resolverWarn{display:none !important}</style></head>';
+
         proxy_pass http://numa_backend;
     }
 }

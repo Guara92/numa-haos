@@ -313,6 +313,13 @@ The dashboard is built for a site root, so nginx rewrites its absolute reference
 into the Ingress prefix (`X-Ingress-Path`): the `API` constant, `/fonts/`, and
 `/locales/*.json`.
 
+nginx also hides the dashboard's "this host's DNS points at …, not this Numa
+instance" advisory (Numa `v0.24.0`). It is always a false positive here: the
+container's `/etc/resolv.conf` points at the Supervisor's DNS by design, while
+Numa serves the LAN on port `53`. Do **not** run `numa install` inside the
+add-on — there is no systemd, and it would repoint the container's resolver at
+Numa itself.
+
 ---
 
 ## Health monitoring & watchdog

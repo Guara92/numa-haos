@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.14.1]
+
+### Fixed
+
+- Ingress dashboard showed an evergreen "this host's DNS points at 172.30.32.3,
+  not this Numa instance" advisory (new in Numa v0.24.0). In this add-on that is
+  expected — the container resolver is the Supervisor's DNS by design — so nginx
+  now hides the banner. Do not run `numa install` inside the add-on.
+
 ## [0.14.0]
 
 ### Security
